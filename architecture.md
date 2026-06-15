@@ -7,7 +7,8 @@ This repository implements a local-first scaffold for the advisor strategy acros
 Core idea:
 
 - A lower-cost executor model drives the task end-to-end.
-- The executor can pause at hard decision points and ask for guidance.
+- The executor receives a harness-injected starting prompt that defines when to ask for guidance.
+- The executor can pause at hard decision points and ask for guidance by emitting a structured block.
 - The harness records all events, calls a stronger advisor model with reconstructed shared context, then resumes the executor session.
 - The advisor does not call tools, mutate files, or produce user-facing deliverables. It returns guidance for the executor.
 
@@ -16,6 +17,7 @@ Core idea:
 ```text
 User task
   -> Harness creates run and executor session id
+  -> Harness injects the executor starting prompt
   -> Executor session starts through Kimi CLI
   -> Executor emits ADVISOR_CONSULT when it needs guidance
   -> Harness appends consult to session_events.jsonl
@@ -23,7 +25,7 @@ User task
   -> Advisor returns ADVISOR_GUIDANCE
   -> Harness appends guidance to session_events.jsonl
   -> Harness resumes the same executor session with the guidance
-  -> Executor continues until EXECUTOR_DONE or no more consults
+  -> Executor continues until EXECUTOR_DONE, advisor stop signal, or a run limit
   -> Harness writes outcome and optional post-run review
 ```
 
@@ -72,6 +74,8 @@ multi-agent-advisor/
 
 ## Protocol
 
+The executor should consult the advisor before high-impact architecture, API, schema, migration, deletion, security, privacy, or irreversible design decisions; after repeated failures or conflicting evidence; and before final completion when independent review is warranted. It should not consult for routine mechanical edits or questions directly answered by the repository.
+
 Executor asks for guidance:
 
 ```text
@@ -113,3 +117,16 @@ Harness owns:
 - optional memory writes through explicit harness policy
 
 Long-term memory is separate from the advisor tool. The advisor may recommend what to remember, but only harness code may write durable memory.
+
+## Completion Semantics
+
+The harness does not treat a successful executor CLI exit as task completion by itself.
+
+- `completed`: the executor emitted a valid `EXECUTOR_DONE` block.
+- `executor_stopped_without_done`: the executor exited without `ADVISOR_CONSULT` and without `EXECUTOR_DONE`.
+- `advisor_call_limit_reached`: the executor requested more advice than allowed.
+- `max_turns_reached`: the run exhausted the configured executor turn limit.
+- `advisor_stop_signal`: the advisor explicitly told the harness to stop.
+- `executor_failed`: the executor CLI exited non-zero.
+
+This keeps the executor responsible for explicitly declaring completion while the harness remains responsible for durable state and run status.

@@ -2,7 +2,7 @@
 
 Local-first scaffold for a Claude-style advisor strategy across CLI sessions.
 
-The executor model drives the task. When it reaches a hard decision, it emits an `ADVISOR_CONSULT` block. The harness records the event, calls the advisor model with reconstructed shared context, records the returned `ADVISOR_GUIDANCE`, and resumes the executor session with that guidance.
+The executor model drives the task. The harness injects a starting prompt that tells the executor when to consult the advisor. When the executor reaches a hard decision, it emits an `ADVISOR_CONSULT` block. The harness records the event, calls the advisor model with reconstructed shared context, records the returned `ADVISOR_GUIDANCE`, and resumes the same executor session with that guidance.
 
 Default local pairing:
 
@@ -24,7 +24,7 @@ python3 -m pip install -e . --no-build-isolation
 ```bash
 maa doctor
 maa init
-maa run "fake smoke task" --executor fake --advisor fake
+maa run "fake smoke task" --executor fake --advisor fake --max-turns 3 --max-advisor-calls 3
 maa review --run <run_id> --advisor fake
 ```
 
@@ -32,11 +32,13 @@ Live local smoke:
 
 ```bash
 maa run "For this smoke test, consult the advisor once before finalizing, then produce a short final answer." \
-  --executor kimi --advisor codex --timeout 240 --max-turns 3
+  --executor kimi --advisor codex --timeout 240 --max-turns 3 --max-advisor-calls 2
 maa review --run <run_id> --advisor codex --timeout 240
 ```
 
 ## Advisor Protocol
+
+The executor decides when advice is needed. The advisor does not run tools, mutate files, or write memory. The harness performs the actual advisor call and owns all durable state.
 
 Executor consultation request:
 
@@ -62,6 +64,8 @@ Executor completion:
 </EXECUTOR_DONE>
 ```
 
+A run is marked `completed` only when the executor emits `EXECUTOR_DONE`. If the executor exits without a consultation request and without `EXECUTOR_DONE`, the harness records `executor_stopped_without_done`.
+
 ## Artifacts
 
 Runtime state is local and gitignored:
@@ -78,6 +82,8 @@ Important run files:
 - `executor_turn_<n>.*`: executor CLI outputs
 - `advisor_turn_<n>.*`: advisor CLI outputs
 - `outcome.json`: run status and counters
+
+The `outcome.json` file includes the executor session id, executor turn count, advisor consultation count, guidance count, and completion status.
 
 ## Tests
 
