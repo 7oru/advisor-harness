@@ -3,41 +3,21 @@
 from __future__ import annotations
 
 import argparse
-import shutil
-import subprocess
 import sys
 from pathlib import Path
 from typing import Iterable, Optional
 
+from packages.adapters import CodexCliAdapter, KimiCliAdapter
 from packages.harness import __version__
 from packages.harness.defaults import init_workspace
-
-
-def _run_version(command: str) -> str:
-    exe = shutil.which(command)
-    if not exe:
-        return "not found"
-    try:
-        result = subprocess.run(
-            [exe, "--version"],
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            timeout=15,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return "found, version check failed: {}".format(exc)
-    output = (result.stdout or result.stderr).strip()
-    return output or "found"
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
     root = Path(args.cwd).resolve()
     print("maa {}".format(__version__))
     print("workspace: {}".format(root))
-    print("kimi: {}".format(_run_version("kimi")))
-    print("codex: {}".format(_run_version("codex")))
+    print("kimi: {}".format(KimiCliAdapter.version()))
+    print("codex: {}".format(CodexCliAdapter.version()))
     return 0
 
 
