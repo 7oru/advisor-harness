@@ -1,4 +1,4 @@
-# Multi-Agent Advisor
+# Advisor Harness
 
 Local-first scaffold for a Claude-style advisor strategy across CLI sessions.
 
