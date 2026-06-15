@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "approved_by": {
+      "type": "string"
+    },
+    "confidence": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number"
+    },
+    "content": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "expires_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "id": {
+      "type": "string"
+    },
+    "source_excerpt": {
+      "type": "string"
+    },
+    "source_run": {
+      "type": "string"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "type": {
+      "enum": [
+        "fact",
+        "decision",
+        "preference",
+        "episode",
+        "anti_pattern"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "content",
+    "source_run",
+    "source_excerpt",
+    "confidence",
+    "approved_by",
+    "created_at",
+    "expires_at",
+    "tags"
+  ],
+  "title": "Multi-Agent Advisor Memory Record",
+  "type": "object"
+}

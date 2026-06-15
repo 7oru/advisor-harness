@@ -20,6 +20,8 @@ memory/*.db
 # Python/node artifacts, if used later
 __pycache__/
 *.pyc
+*.egg-info/
+.pytest_cache/
 node_modules/
 dist/
 build/
