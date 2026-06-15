@@ -1,0 +1,25 @@
+# Local runtime state
+runs/
+mailbox/
+
+# Private or high-churn memory stores
+memory/*.jsonl
+memory/*.db
+
+# Secrets and local config
+.env
+.env.*
+*.key
+*.pem
+
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/
+
+# Python/node artifacts, if used later
+__pycache__/
+*.pyc
+node_modules/
+dist/
+build/
