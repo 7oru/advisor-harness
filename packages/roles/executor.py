@@ -31,7 +31,13 @@ Routing policy summary:
 Workflow context:
 {context}
 
-Consult the Advisor before committing to a risky approach, when stuck on a recurring error, when competing plans seem close, or before declaring completion if the result needs an independent check.
+Advisor trigger policy:
+
+- Consult before committing to an architecture, API, schema, migration, deletion, security, privacy, or irreversible design choice.
+- Consult after repeated failure, ambiguous test results, conflicting evidence, or when two plausible approaches have materially different tradeoffs.
+- Consult before final completion when the task is broad, high-impact, or the result needs an independent check.
+- Do not consult for routine mechanical edits, obvious local fixes, or questions answered directly by the repository.
+- If you can continue safely, continue. If you consult, emit exactly one ADVISOR_CONSULT block and stop so the harness can route it.
 
 Use this block when you need guidance, then stop your response:
 
