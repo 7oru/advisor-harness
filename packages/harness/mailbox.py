@@ -22,26 +22,28 @@ def read_mailbox(root: Path, name: str) -> List[Dict[str, Any]]:
     return read_jsonl(mailbox_path(root, name))
 
 
-def prepare_advice_request(run_id: str, raw: Dict[str, Any]) -> Dict[str, Any]:
+def prepare_advisor_consult(run_id: str, turn: int, raw: Dict[str, Any]) -> Dict[str, Any]:
     return {
-        "id": raw.get("id") or new_id("adv_req"),
+        "id": raw.get("id") or new_id("adv_consult"),
         "run_id": run_id,
-        "reason": raw.get("reason") or "unspecified",
-        "task": raw.get("task") or "",
-        "packet": raw.get("packet") or {},
+        "turn": turn,
+        "question": raw.get("question") or "",
+        "context": raw.get("context") or "",
+        "options": raw.get("options") or [],
+        "preferred_option": raw.get("preferred_option") or "",
+        "urgency": raw.get("urgency") or "normal",
         "created_at": raw.get("created_at") or utc_now(),
     }
 
 
-def prepare_advice_response(request_id: str, raw: Dict[str, Any]) -> Dict[str, Any]:
+def prepare_advisor_guidance(consult_id: str, raw: Dict[str, Any]) -> Dict[str, Any]:
     return {
-        "id": raw.get("id") or new_id("adv_res"),
-        "request_id": request_id,
-        "decision": raw.get("decision") or "escalate_to_human",
+        "id": raw.get("id") or new_id("adv_guidance"),
+        "consult_id": consult_id,
+        "guidance": raw.get("guidance") or "",
         "rationale": raw.get("rationale") or "",
-        "suggested_change": raw.get("suggested_change") or "",
+        "stop_signal": bool(raw.get("stop_signal", False)),
         "created_at": raw.get("created_at") or utc_now(),
-        "memory_decision": raw.get("memory_decision"),
     }
 
 

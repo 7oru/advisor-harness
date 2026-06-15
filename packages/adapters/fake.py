@@ -25,12 +25,14 @@ class FakeAdapter(AgentAdapter):
         timeout_seconds: Optional[int] = None,
     ) -> AgentResult:
         prompt_lower = prompt.lower()
-        if "advisor packet:" in prompt_lower:
-            final = self._advisor_response()
+        if "current consultation request:" in prompt_lower:
+            final = self._advisor_guidance()
         elif "post-run review request:" in prompt_lower or "post run review request:" in prompt_lower:
             final = self._post_run_review()
+        elif "advisor guidance to executor:" in prompt_lower:
+            final = self._executor_done()
         else:
-            final = self._executor_response()
+            final = self._executor_consult()
         return AgentResult(
             stdout=final,
             stderr="",
@@ -46,49 +48,60 @@ class FakeAdapter(AgentAdapter):
             },
         )
 
-    def _executor_response(self) -> str:
-        advice_request = {
-            "reason": "fake_high_risk_security_claim",
-            "task": "fake smoke task",
-            "packet": {
-                "claim": "The product supports SSO.",
-                "risk": "high",
-                "evidence": "Fake adapter evidence excerpt.",
-            },
+    def _executor_consult(self) -> str:
+        consult = {
+            "question": "Should the fake executor choose the simple scaffold path?",
+            "context": "The fake executor is simulating a hard decision before finalizing.",
+            "options": ["simple scaffold", "overbuilt framework"],
+            "preferred_option": "simple scaffold",
+            "urgency": "normal",
         }
         memory_proposal = {
-            "type": "fact",
-            "content": "Fake smoke memory: the product supports SSO.",
-            "source_excerpt": "Fake adapter evidence excerpt.",
+            "type": "episode",
+            "content": "Fake smoke run consulted the advisor before finalizing.",
+            "source_excerpt": "The fake executor is simulating a hard decision before finalizing.",
             "confidence": 0.9,
             "expires_at": None,
             "tags": ["fake", "smoke"],
         }
         return "\n".join(
             [
-                "Fake executor completed.",
-                "<ADVICE_REQUEST>",
-                json.dumps(advice_request, indent=2, sort_keys=True),
-                "</ADVICE_REQUEST>",
+                "Fake executor is pausing for advisor guidance.",
+                "<ADVISOR_CONSULT>",
+                json.dumps(consult, indent=2, sort_keys=True),
+                "</ADVISOR_CONSULT>",
                 "<MEMORY_PROPOSAL>",
                 json.dumps(memory_proposal, indent=2, sort_keys=True),
                 "</MEMORY_PROPOSAL>",
             ]
         )
 
-    def _advisor_response(self) -> str:
-        response = {
-            "decision": "approve",
-            "rationale": "Fake advisor approves deterministic smoke packet.",
-            "suggested_change": "",
-            "memory_decision": "approve",
+    def _advisor_guidance(self) -> str:
+        guidance = {
+            "guidance": "Choose the simple scaffold path and verify the resume loop.",
+            "rationale": "The objective is a minimal advisor strategy scaffold, not a framework expansion.",
+            "stop_signal": False,
         }
         return "\n".join(
             [
-                "Fake advisor reviewed the packet.",
-                "<ADVICE_RESPONSE>",
-                json.dumps(response, indent=2, sort_keys=True),
-                "</ADVICE_RESPONSE>",
+                "Fake advisor returned guidance.",
+                "<ADVISOR_GUIDANCE>",
+                json.dumps(guidance, indent=2, sort_keys=True),
+                "</ADVISOR_GUIDANCE>",
+            ]
+        )
+
+    def _executor_done(self) -> str:
+        done = {
+            "status": "completed",
+            "summary": "Fake executor applied advisor guidance and completed the task.",
+        }
+        return "\n".join(
+            [
+                "Fake executor applied advisor guidance and completed.",
+                "<EXECUTOR_DONE>",
+                json.dumps(done, indent=2, sort_keys=True),
+                "</EXECUTOR_DONE>",
             ]
         )
 

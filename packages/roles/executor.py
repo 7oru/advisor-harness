@@ -15,7 +15,9 @@ def build_executor_prompt(
     context = workflow_context or "No specialized workflow context was provided."
     return """You are the Executor in a local multi-agent advisor harness.
 
-You own the low-cost main task execution. You do not call the Advisor directly, and you never write long-term memory. The harness is the only scheduler and writer.
+You own the low-cost main task execution. You do not call the Advisor directly, and you never write long-term memory. The harness is the only scheduler and state writer.
+
+This harness implements an advisor strategy. Continue the task yourself when the path is clear. When you reach a hard decision that would benefit from a stronger advisor, pause and emit exactly one ADVISOR_CONSULT block. The harness will call the Advisor, then resume your same session with the guidance.
 
 Task:
 {task}
@@ -29,19 +31,26 @@ Routing policy summary:
 Workflow context:
 {context}
 
-When the task contains a high-risk claim, low confidence answer, unsupported affirmative claim, conflicting source, or any reusable long-term fact, emit structured blocks for the harness.
+Consult the Advisor before committing to a risky approach, when stuck on a recurring error, when competing plans seem close, or before declaring completion if the result needs an independent check.
 
-Use exactly these optional block formats when relevant:
+Use this block when you need guidance, then stop your response:
 
-<ADVICE_REQUEST>
-{{"reason":"high_risk_security_claim","task":"short task summary","packet":{{"claim":"...","risk":"high","evidence":"..."}}}}
-</ADVICE_REQUEST>
+<ADVISOR_CONSULT>
+{{"question":"...","context":"...","options":["..."],"preferred_option":"...","urgency":"normal"}}
+</ADVISOR_CONSULT>
 
+Use this optional block only when you want to propose a durable memory for harness policy to consider:
 <MEMORY_PROPOSAL>
 {{"type":"fact","content":"...","source_excerpt":"...","confidence":0.8,"expires_at":null,"tags":["..."]}}
 </MEMORY_PROPOSAL>
 
-Return your normal draft or task result outside the blocks. Keep block contents valid JSON objects.
+When the task is complete, include:
+
+<EXECUTOR_DONE>
+{{"status":"completed","summary":"..."}}
+</EXECUTOR_DONE>
+
+Keep block contents valid JSON objects. The Advisor guidance will arrive in a later message if you consult it.
 """.format(
         task=task,
         memory_summary=memory_summary,

@@ -45,10 +45,10 @@ def build_post_run_review_prompt(root: Path, run_dir: Path, run_id: str) -> str:
         "run_id": run_id,
         "task": _read_optional(run_dir / "task.md"),
         "outcome": _read_json_optional(run_dir / "outcome.json"),
-        "advice_requests": read_jsonl(run_dir / "advice_requests.jsonl"),
-        "advisor_reviews": read_jsonl(run_dir / "advisor_reviews.jsonl"),
+        "session_events": read_jsonl(run_dir / "session_events.jsonl"),
+        "advisor_consults": read_jsonl(run_dir / "advisor_consults.jsonl"),
+        "advisor_guidance": read_jsonl(run_dir / "advisor_guidance.jsonl"),
         "memory_proposals": read_jsonl(run_dir / "memory_proposals.jsonl"),
-        "approved_memory": read_jsonl(run_dir / "approved_memory.jsonl"),
     }
     return """You are the Advisor doing a post-run review.
 
@@ -58,7 +58,7 @@ Post-run review request:
 Routing policy:
 {policy}
 
-Review for missed advisor opportunities, unnecessary advisor calls, bad memory proposals, risky unsupported claims, and routing policy improvements.
+Review for missed advisor opportunities, unnecessary advisor calls, poor guidance application, bad memory proposals, risky unsupported claims, and routing policy improvements.
 
 Write Markdown with these sections:
 

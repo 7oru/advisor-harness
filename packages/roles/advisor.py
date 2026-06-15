@@ -10,13 +10,14 @@ def build_advisor_prompt(
     *,
     run_id: str,
     task: str,
-    request: Dict[str, Any],
+    consult: Dict[str, Any],
+    session_context: str,
     routing_policy_summary: str,
 ) -> str:
-    packet = json.dumps(request, indent=2, sort_keys=True)
-    return """You are the Advisor in a local multi-agent advisor harness.
+    packet = json.dumps(consult, indent=2, sort_keys=True)
+    return """You are the Advisor in a local multi-agent advisor strategy harness.
 
-You are not the main executor. Review only the current Advisor packet. If context is insufficient, say what is missing instead of inventing facts. For memory review, assess factuality, reuse value, source quality, expiration risk, and privacy risk.
+You are not the main executor. Do not call tools, do not mutate files, and do not produce a user-facing deliverable. Review the shared session context and the current consultation request, then return guidance for the Executor to apply before it continues.
 
 Run id: {run_id}
 Task: {task}
@@ -24,17 +25,21 @@ Task: {task}
 Routing policy summary:
 {routing_policy_summary}
 
-Advisor packet:
+Shared session context:
+{session_context}
+
+Current consultation request:
 {packet}
 
 Return exactly one valid JSON object inside this block:
 
-<ADVICE_RESPONSE>
-{{"decision":"approve|revise|reject|escalate_to_human","rationale":"...","suggested_change":"...","memory_decision":"approve|reject|null"}}
-</ADVICE_RESPONSE>
+<ADVISOR_GUIDANCE>
+{{"guidance":"...","rationale":"...","stop_signal":false}}
+</ADVISOR_GUIDANCE>
 """.format(
         run_id=run_id,
         task=task,
         routing_policy_summary=routing_policy_summary,
+        session_context=session_context,
         packet=packet,
     )

@@ -13,17 +13,18 @@ def load_policy_summary(root: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def advisor_reasons(advice_requests: List[Dict[str, object]], memory_proposals: List[Dict[str, object]]) -> List[str]:
+def advisor_reasons(advisor_consults: List[Dict[str, object]], memory_proposals: List[Dict[str, object]]) -> List[str]:
     reasons: List[str] = []
-    for request in advice_requests:
-        reasons.append(str(request.get("reason") or "advice_request"))
+    for consult in advisor_consults:
+        urgency = str(consult.get("urgency") or "normal")
+        reasons.append("advisor_consult:{}".format(urgency))
     for _proposal in memory_proposals:
-        reasons.append("memory_proposal_review")
+        reasons.append("memory_proposal")
     return reasons
 
 
 def should_call_advisor(
-    advice_requests: List[Dict[str, object]],
+    advisor_consults: List[Dict[str, object]],
     memory_proposals: List[Dict[str, object]],
 ) -> bool:
-    return bool(advice_requests or memory_proposals)
+    return bool(advisor_consults or memory_proposals)

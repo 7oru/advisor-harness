@@ -1,12 +1,14 @@
 # Multi-Agent Advisor
 
-Local-first harness for a two-agent advisor pattern:
+Local-first scaffold for a Claude-style advisor strategy across CLI sessions.
 
-- Kimi as the low-cost executor
-- Codex as the advisor for high-risk packets, memory review, and post-run feedback
-- Harness-owned artifacts, mailbox, policy, and approved memory writes
+The executor model drives the task. When it reaches a hard decision, it emits an `ADVISOR_CONSULT` block. The harness records the event, calls the advisor model with reconstructed shared context, records the returned `ADVISOR_GUIDANCE`, and resumes the executor session with that guidance.
 
-The first scaffold targets Security Questionnaire Advisor workflows while keeping the harness reusable.
+Default local pairing:
+
+- Executor: Kimi CLI
+- Advisor: Codex CLI
+- Test backend: deterministic fake adapter
 
 ## Install
 
@@ -24,17 +26,40 @@ maa doctor
 maa init
 maa run "fake smoke task" --executor fake --advisor fake
 maa review --run <run_id> --advisor fake
-maa run-security-questionnaire apps/security_questionnaire/sample_inputs/questionnaire_sample.csv \
-  --knowledge apps/security_questionnaire/sample_inputs/company_knowledge \
-  --executor fake --advisor fake
 ```
 
 Live local smoke:
 
 ```bash
-maa run "Produce one advice request and one memory proposal for a scaffold smoke test." \
-  --executor kimi --advisor codex --timeout 240
+maa run "For this smoke test, consult the advisor once before finalizing, then produce a short final answer." \
+  --executor kimi --advisor codex --timeout 240 --max-turns 3
 maa review --run <run_id> --advisor codex --timeout 240
+```
+
+## Advisor Protocol
+
+Executor consultation request:
+
+```text
+<ADVISOR_CONSULT>
+{"question":"...","context":"...","options":["..."],"preferred_option":"...","urgency":"normal"}
+</ADVISOR_CONSULT>
+```
+
+Advisor guidance:
+
+```text
+<ADVISOR_GUIDANCE>
+{"guidance":"...","rationale":"...","stop_signal":false}
+</ADVISOR_GUIDANCE>
+```
+
+Executor completion:
+
+```text
+<EXECUTOR_DONE>
+{"status":"completed","summary":"..."}
+</EXECUTOR_DONE>
 ```
 
 ## Artifacts
@@ -45,7 +70,14 @@ Runtime state is local and gitignored:
 - `mailbox/*.jsonl`
 - `memory/*.jsonl`
 
-Each run stores the task, executor stdout/stderr, advisor reviews, memory proposals, approved memory records, and `outcome.json`.
+Important run files:
+
+- `session_events.jsonl`: durable cross-session event log
+- `advisor_consults.jsonl`: executor consultation requests
+- `advisor_guidance.jsonl`: advisor guidance returned to executor
+- `executor_turn_<n>.*`: executor CLI outputs
+- `advisor_turn_<n>.*`: advisor CLI outputs
+- `outcome.json`: run status and counters
 
 ## Tests
 

@@ -5,5 +5,5 @@ from packages.harness.parser import parse_json_blocks
 
 class ParserTests(TestCase):
     def test_parse_json_block(self):
-        text = '<ADVICE_REQUEST>{"reason":"x","packet":{}}</ADVICE_REQUEST>'
-        self.assertEqual(parse_json_blocks(text, "ADVICE_REQUEST")[0]["reason"], "x")
+        text = '<ADVISOR_CONSULT>{"question":"x","context":"y"}</ADVISOR_CONSULT>'
+        self.assertEqual(parse_json_blocks(text, "ADVISOR_CONSULT")[0]["question"], "x")

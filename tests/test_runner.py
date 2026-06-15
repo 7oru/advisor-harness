@@ -8,7 +8,7 @@ from packages.harness.runner import run_task
 
 
 class RunnerTests(TestCase):
-    def test_fake_run_writes_artifacts_and_memory(self):
+    def test_fake_run_writes_consult_guidance_resume_artifacts(self):
         with TemporaryDirectory() as td:
             root = Path(td)
             init_workspace(root)
@@ -21,13 +21,19 @@ class RunnerTests(TestCase):
             )
 
             self.assertTrue((result.run_dir / "task.md").exists())
-            self.assertTrue((result.run_dir / "executor.stdout.txt").exists())
-            self.assertTrue((result.run_dir / "advisor_reviews.jsonl").exists())
+            self.assertTrue((result.run_dir / "session_events.jsonl").exists())
+            self.assertTrue((result.run_dir / "executor_turn_1.stdout.txt").exists())
+            self.assertTrue((result.run_dir / "executor_turn_2.stdout.txt").exists())
+            self.assertTrue((result.run_dir / "advisor_consults.jsonl").exists())
+            self.assertTrue((result.run_dir / "advisor_guidance.jsonl").exists())
             self.assertTrue((result.run_dir / "memory_proposals.jsonl").exists())
             self.assertTrue((result.run_dir / "outcome.json").exists())
-            self.assertTrue((root / "memory" / "facts.jsonl").exists())
-            self.assertEqual(result.outcome["advice_request_count"], 2)
-            self.assertEqual(result.outcome["approved_memory_count"], 1)
+            self.assertEqual(result.outcome["status"], "completed")
+            self.assertEqual(result.outcome["executor_turn_count"], 2)
+            self.assertEqual(result.outcome["advisor_consult_count"], 1)
+            self.assertEqual(result.outcome["advisor_guidance_count"], 1)
+            self.assertEqual(result.outcome["memory_proposal_count"], 1)
+            self.assertFalse((root / "memory" / "facts.jsonl").exists())
 
     def test_fake_review_writes_review_files(self):
         with TemporaryDirectory() as td:
