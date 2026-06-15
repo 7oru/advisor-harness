@@ -10,6 +10,7 @@ from typing import Iterable, Optional
 from packages.adapters import CodexCliAdapter, KimiCliAdapter
 from packages.harness import __version__
 from packages.harness.defaults import init_workspace
+from packages.harness.runner import run_task
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
@@ -30,6 +31,24 @@ def cmd_init(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_run(args: argparse.Namespace) -> int:
+    root = Path(args.cwd).resolve()
+    task = " ".join(args.task).strip()
+    result = run_task(
+        root=root,
+        task=task,
+        executor_backend=args.executor,
+        advisor_backend=args.advisor,
+        timeout_seconds=args.timeout,
+    )
+    print("run_id: {}".format(result.run_id))
+    print("run_dir: {}".format(result.run_dir))
+    print("status: {}".format(result.outcome["status"]))
+    print("advisor_requests: {}".format(result.outcome["advice_request_count"]))
+    print("memory_proposals: {}".format(result.outcome["memory_proposal_count"]))
+    return 0 if result.outcome["status"] == "completed" else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="maa", description="Multi-Agent Advisor harness")
     parser.add_argument("--version", action="version", version="maa {}".format(__version__))
@@ -46,6 +65,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     init_parser = subparsers.add_parser("init", help="Create local workspace directories and defaults")
     init_parser.set_defaults(func=cmd_init)
+
+    run_parser = subparsers.add_parser("run", help="Run a generic advisor harness task")
+    run_parser.add_argument("task", nargs="+", help="Task description")
+    run_parser.add_argument("--executor", default="kimi", choices=["kimi", "codex", "fake"])
+    run_parser.add_argument("--advisor", default="codex", choices=["kimi", "codex", "fake"])
+    run_parser.add_argument("--timeout", default=240, type=int, help="Per-agent timeout in seconds")
+    run_parser.set_defaults(func=cmd_run)
 
     return parser
 

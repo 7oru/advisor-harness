@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from packages.harness.artifacts import new_id, utc_now
-from packages.harness.jsonl import append_jsonl
+from packages.harness.jsonl import append_jsonl, read_jsonl
 
 
 MEMORY_FILES = {
@@ -61,3 +61,16 @@ def write_approved_memory(
     record = approved_memory_record(proposal, run_id=run_id, approved_by=approved_by)
     append_jsonl(root / "memory" / memory_file_for(record["type"]), record)
     return record
+
+
+def build_memory_summary(root: Path, limit: int = 20) -> str:
+    lines = []
+    for filename in ("facts.jsonl", "decisions.jsonl", "episodes.jsonl"):
+        path = root / "memory" / filename
+        for record in read_jsonl(path)[-limit:]:
+            content = str(record.get("content") or "").strip()
+            if content:
+                lines.append("- [{}] {}".format(record.get("type") or "memory", content))
+    if not lines:
+        return "No approved long-term memory yet."
+    return "\n".join(lines[-limit:])

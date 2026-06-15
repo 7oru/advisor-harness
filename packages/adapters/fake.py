@@ -25,10 +25,10 @@ class FakeAdapter(AgentAdapter):
         timeout_seconds: Optional[int] = None,
     ) -> AgentResult:
         prompt_lower = prompt.lower()
-        if "post-run review" in prompt_lower or "post run review" in prompt_lower:
-            final = self._post_run_review()
-        elif "advisor packet" in prompt_lower or "review packet" in prompt_lower:
+        if "advisor packet:" in prompt_lower:
             final = self._advisor_response()
+        elif "post-run review request:" in prompt_lower or "post run review request:" in prompt_lower:
+            final = self._post_run_review()
         else:
             final = self._executor_response()
         return AgentResult(
