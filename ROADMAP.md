@@ -1,0 +1,67 @@
+# Roadmap
+
+This roadmap keeps the project focused on a generic advisor strategy scaffold first, then expands toward persistence, visualization, domain workflows, and self-improving prompts/memory.
+
+## Phase 1: Complete the Advisor Strategy Harness
+
+Goal: make the cross-session advisor strategy loop reliable enough to use as a reusable local runtime.
+
+Key outcomes:
+
+- Harden the `ADVISOR_CONSULT` -> `ADVISOR_GUIDANCE` -> executor resume loop.
+- Make executor session continuation explicit, observable, and resilient across CLI failures.
+- Add stricter schema validation for executor, advisor, and completion blocks.
+- Improve run status handling for advisor stop signals, malformed blocks, repeated consults, and exhausted budgets.
+- Keep the harness domain-agnostic: no vertical business workflow should be required for the core loop.
+
+Acceptance signal:
+
+- A live Kimi executor and Codex advisor run can complete a non-trivial task through at least one autonomous consultation and resume cycle.
+
+## Phase 2: Persist Sessions to a Database and Add UI Visualization
+
+Goal: move beyond file-only artifacts so runs, turns, consultations, guidance, and outcomes can be queried and visualized.
+
+Key outcomes:
+
+- Persist session events, executor turns, advisor consultations, advisor guidance, memory proposals, and outcomes to a local database.
+- Keep JSONL artifacts as export/debug output, but make the database the queryable source of truth.
+- Add a lightweight UI to inspect timelines, prompts, raw CLI outputs, consult reasons, guidance, and final outcomes.
+- Support filtering by run status, backend, advisor call count, task, and error mode.
+
+Acceptance signal:
+
+- A user can open a local UI, inspect a run timeline, and understand exactly when the executor consulted the advisor and how guidance changed the next executor turn.
+
+## Phase 3: Add a Focused Vertical Application
+
+Goal: validate the generic harness against a narrow, high-value domain without polluting the core runtime.
+
+Key outcomes:
+
+- Pick one specific vertical workflow with repeated tasks, high-value judgment points, and measurable outputs.
+- Keep domain prompts, schemas, samples, and evaluators outside the generic harness core.
+- Reuse the same advisor loop, session persistence, and UI timeline.
+- Add domain-specific acceptance tests and live smoke scenarios.
+
+Acceptance signal:
+
+- The vertical application demonstrates that the advisor strategy improves task quality or safety while keeping advisor calls explainable and bounded.
+
+## Phase 4: Build the Feedback Loop for Memory Schema and Prompts
+
+Goal: let post-run review propose improvements to durable memory structure and the injected prompts used by executor and advisor.
+
+Key outcomes:
+
+- Use post-run review to detect missing advisor consultations, unnecessary consultations, weak guidance, bad memory proposals, and confusing prompt instructions.
+- Generate structured improvement proposals for:
+  - memory schema
+  - executor starting prompt
+  - advisor guidance prompt
+- Require harness-side validation and human approval before applying changes.
+- Track prompt and schema versions per run so quality changes can be evaluated over time.
+
+Acceptance signal:
+
+- The system can produce auditable patch proposals that improve future executor/advisor behavior without letting a model directly mutate durable policy, schema, or prompts.

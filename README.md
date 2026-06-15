@@ -10,6 +10,8 @@ Default local pairing:
 - Advisor: Codex CLI
 - Test backend: deterministic fake adapter
 
+See [ROADMAP.md](ROADMAP.md) for the staged plan from the generic advisor harness to persistence, UI, vertical applications, and feedback-loop-driven prompt/schema improvement.
+
 ## Install
 
 ```bash
