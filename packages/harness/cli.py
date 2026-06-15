@@ -10,6 +10,7 @@ from typing import Iterable, Optional
 from packages.adapters import CodexCliAdapter, KimiCliAdapter
 from packages.harness import __version__
 from packages.harness.defaults import init_workspace
+from packages.harness.review import review_run
 from packages.harness.runner import run_task
 from packages.harness.security_questionnaire import run_security_questionnaire
 
@@ -68,6 +69,23 @@ def cmd_run_security_questionnaire(args: argparse.Namespace) -> int:
     return 0 if result.outcome["status"] == "completed" else 1
 
 
+def cmd_review(args: argparse.Namespace) -> int:
+    root = Path(args.cwd).resolve()
+    outcome = review_run(
+        root=root,
+        run_id=args.run,
+        advisor_backend=args.advisor,
+        timeout_seconds=args.timeout,
+    )
+    run_dir = root / "runs" / args.run
+    print("run_id: {}".format(args.run))
+    print("run_dir: {}".format(run_dir))
+    print("status: {}".format(outcome["status"]))
+    print("post_run_review: {}".format(run_dir / "post_run_review.md"))
+    print("policy_patch_proposal: {}".format(run_dir / "policy_patch_proposal.md"))
+    return 0 if outcome["status"] == "completed" else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="maa", description="Multi-Agent Advisor harness")
     parser.add_argument("--version", action="version", version="maa {}".format(__version__))
@@ -102,6 +120,12 @@ def build_parser() -> argparse.ArgumentParser:
     sq_parser.add_argument("--advisor", default="codex", choices=["kimi", "codex", "fake"])
     sq_parser.add_argument("--timeout", default=240, type=int, help="Per-agent timeout in seconds")
     sq_parser.set_defaults(func=cmd_run_security_questionnaire)
+
+    review_parser = subparsers.add_parser("review", help="Run advisor post-run review")
+    review_parser.add_argument("--run", required=True, help="Run id to review")
+    review_parser.add_argument("--advisor", default="codex", choices=["kimi", "codex", "fake"])
+    review_parser.add_argument("--timeout", default=240, type=int, help="Advisor timeout in seconds")
+    review_parser.set_defaults(func=cmd_review)
 
     return parser
 
