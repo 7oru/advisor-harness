@@ -31,6 +31,8 @@ class FakeAdapter(AgentAdapter):
             final = self._post_run_review()
         elif "advisor guidance to executor:" in prompt_lower:
             final = self._executor_done()
+        elif "stop without done" in prompt_lower:
+            final = "Fake executor stopped without an EXECUTOR_DONE block."
         else:
             final = self._executor_consult()
         return AgentResult(

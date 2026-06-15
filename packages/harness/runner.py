@@ -114,7 +114,12 @@ def run_task(
 
         raw_consults = parse_json_blocks(executor_result.final_message, "ADVISOR_CONSULT")
         if not raw_consults:
-            status = "completed" if executor_result.exit_code == 0 else "executor_failed"
+            if executor_result.exit_code != 0:
+                status = "executor_failed"
+            elif executor_done:
+                status = "completed"
+            else:
+                status = "executor_stopped_without_done"
             break
 
         if len(advisor_consults) >= max_advisor_calls:

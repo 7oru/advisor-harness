@@ -57,3 +57,20 @@ class RunnerTests(TestCase):
             self.assertEqual(review["status"], "completed")
             self.assertTrue((result.run_dir / "post_run_review.md").exists())
             self.assertTrue((result.run_dir / "policy_patch_proposal.md").exists())
+
+    def test_run_requires_executor_done_for_completed_status(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            init_workspace(root)
+            result = run_task(
+                root=root,
+                task="stop without done",
+                executor_backend="fake",
+                advisor_backend="fake",
+                timeout_seconds=10,
+            )
+
+            self.assertEqual(result.outcome["status"], "executor_stopped_without_done")
+            self.assertEqual(result.outcome["executor_turn_count"], 1)
+            self.assertEqual(result.outcome["advisor_consult_count"], 0)
+            self.assertEqual(result.outcome["executor_done"], {})
