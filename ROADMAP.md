@@ -18,6 +18,26 @@ Acceptance signal:
 
 - A live Kimi executor and Codex advisor run can complete a non-trivial task through at least one autonomous consultation and resume cycle.
 
+## Phase 1.5: Add an Evaluation and Regression Harness
+
+Goal: create a small, repeatable quality baseline before adding persistence, UI, vertical workflows, or self-improvement loops.
+
+Key outcomes:
+
+- Maintain fixed smoke tasks for fake and live executor/advisor runs.
+- Add regression scenarios for autonomous consultation, no-consult completion, malformed blocks, advisor stop signals, and missing `EXECUTOR_DONE`.
+- Track simple quality and reliability metrics:
+  - malformed block rate
+  - completion without `EXECUTOR_DONE` rate
+  - advisor consultation count per run
+  - max-turn exhaustion rate
+  - advisor guidance application rate
+- Save evaluation summaries as run artifacts so later UI and feedback-loop work has a concrete baseline.
+
+Acceptance signal:
+
+- A single command can run the scaffold regression suite and report whether advisor consultation behavior improved, regressed, or stayed stable.
+
 ## Phase 2: Persist Sessions to a Database and Add UI Visualization
 
 Goal: move beyond file-only artifacts so runs, turns, consultations, guidance, and outcomes can be queried and visualized.
