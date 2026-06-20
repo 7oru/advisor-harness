@@ -27,6 +27,7 @@ python3 -m pip install -e . --no-build-isolation
 maa doctor
 maa init
 maa run "fake smoke task" --executor fake --advisor fake --max-turns 3 --max-advisor-calls 3
+maa eval
 maa review --run <run_id> --advisor fake
 ```
 
@@ -37,6 +38,15 @@ maa run "For this smoke test, consult the advisor once before finalizing, then p
   --executor kimi --advisor codex --timeout 240 --max-turns 3 --max-advisor-calls 2
 maa review --run <run_id> --advisor codex --timeout 240
 ```
+
+Evaluation harness:
+
+```bash
+maa eval
+maa eval --include-live --live-timeout 240
+```
+
+`maa eval` runs deterministic fake regression scenarios for autonomous consultation, no-consult completion, malformed blocks, advisor stop signals, max-turn exhaustion, and missing `EXECUTOR_DONE`. It writes `evaluation_summary.json`, `evaluation_summary.md`, and `scenario_results.jsonl` under `runs/eval_*/`.
 
 ## Advisor Protocol
 
@@ -84,6 +94,7 @@ Important run files:
 - `executor_turn_<n>.*`: executor CLI outputs
 - `advisor_turn_<n>.*`: advisor CLI outputs
 - `outcome.json`: run status and counters
+- `evaluation_summary.json`: evaluation metrics and scenario results for `maa eval`
 
 The `outcome.json` file includes the executor session id, executor turn count, advisor consultation count, guidance count, and completion status.
 

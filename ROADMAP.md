@@ -38,6 +38,12 @@ Acceptance signal:
 
 - A single command can run the scaffold regression suite and report whether advisor consultation behavior improved, regressed, or stayed stable.
 
+Current scaffold support:
+
+- `maa eval` runs the fake regression suite and writes `evaluation_summary.json`, `evaluation_summary.md`, and `scenario_results.jsonl` under `runs/eval_*/`.
+- `maa eval --include-live` adds one live Kimi/Codex consult-guidance-resume smoke scenario.
+- The summary reports pass rate, malformed block rate, completion without `EXECUTOR_DONE` rate, advisor consultation count, max-turn exhaustion rate, and advisor guidance application rate.
+
 ## Phase 2: Persist Sessions to a Database and Add UI Visualization
 
 Goal: move beyond file-only artifacts so runs, turns, consultations, guidance, and outcomes can be queried and visualized.
