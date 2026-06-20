@@ -3,7 +3,12 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 
-from packages.harness.evaluation import run_evaluation
+from packages.harness.evaluation import (
+    _latest_previous_summary,
+    fake_scenarios,
+    live_smoke_scenario,
+    run_evaluation,
+)
 
 
 class EvaluationTests(TestCase):
@@ -98,3 +103,29 @@ class EvaluationTests(TestCase):
             self.assertEqual(result["summary"]["scenario_count"], 7)
             self.assertEqual(result["summary"]["verdict"], "stable")
             self.assertIsNone(result["summary"]["previous_evaluation_id"])
+
+    def test_live_evaluation_ignores_previous_live_suite_with_different_backends(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            run_evaluation(
+                root=root,
+                include_live=True,
+                live_executor="fake",
+                live_advisor="fake",
+            )
+            current_scenarios = fake_scenarios()
+            current_scenarios.append(
+                live_smoke_scenario(
+                    executor_backend="kimi",
+                    advisor_backend="codex",
+                    timeout_seconds=240,
+                )
+            )
+
+            previous = _latest_previous_summary(
+                root,
+                exclude_dir=root / "runs" / "eval_current",
+                scenarios=current_scenarios,
+            )
+
+            self.assertEqual(previous, {})

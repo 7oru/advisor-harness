@@ -194,6 +194,7 @@ def _run_scenario(*, root: Path, scenario: EvalScenario) -> Dict[str, Any]:
         "name": scenario.name,
         "description": scenario.description,
         "live": scenario.live,
+        "config": _scenario_config(scenario),
         "passed": not failures,
         "failures": failures,
         "run_id": result.run_id,
@@ -315,7 +316,51 @@ def _matches_scenario_suite(summary: Dict[str, Any], scenarios: Optional[List[Ev
         if not isinstance(item, dict) or "name" not in item:
             return False
         previous_names.append(item["name"])
-    return previous_names == expected_names
+    if previous_names != expected_names:
+        return False
+    for item, scenario in zip(previous_scenarios, scenarios):
+        if not _matches_scenario_config(item, scenario):
+            return False
+    return True
+
+
+def _scenario_config(scenario: EvalScenario) -> Dict[str, Any]:
+    return {
+        "live": scenario.live,
+        "executor_backend": scenario.executor_backend,
+        "advisor_backend": scenario.advisor_backend,
+        "timeout_seconds": scenario.timeout_seconds,
+        "max_turns": scenario.max_turns,
+        "max_advisor_calls": scenario.max_advisor_calls,
+    }
+
+
+def _matches_scenario_config(previous: Dict[str, Any], scenario: EvalScenario) -> bool:
+    expected = _scenario_config(scenario)
+    config = previous.get("config")
+    if isinstance(config, dict):
+        return _available_metadata_matches(config, expected)
+    outcome = previous.get("outcome")
+    if isinstance(outcome, dict):
+        return _available_metadata_matches(
+            outcome,
+            expected,
+            keys=("executor_backend", "advisor_backend", "max_turns", "max_advisor_calls"),
+        )
+    return True
+
+
+def _available_metadata_matches(
+    actual: Dict[str, Any],
+    expected: Dict[str, Any],
+    *,
+    keys: Iterable[str] = (),
+) -> bool:
+    fields = keys or expected.keys()
+    for key in fields:
+        if key in actual and actual.get(key) != expected.get(key):
+            return False
+    return True
 
 
 def _compare_to_previous(metrics: Dict[str, Any], previous_summary: Dict[str, Any]) -> str:
