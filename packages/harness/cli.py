@@ -10,6 +10,7 @@ from typing import Iterable, Optional
 from packages.adapters import CodexCliAdapter, KimiCliAdapter
 from packages.harness import __version__
 from packages.harness.defaults import init_workspace
+from packages.harness.evaluation import run_evaluation
 from packages.harness.review import review_run
 from packages.harness.runner import run_task
 
@@ -69,6 +70,24 @@ def cmd_review(args: argparse.Namespace) -> int:
     return 0 if outcome["status"] == "completed" else 1
 
 
+def cmd_eval(args: argparse.Namespace) -> int:
+    root = Path(args.cwd).resolve()
+    result = run_evaluation(
+        root=root,
+        include_live=args.include_live,
+        live_executor=args.live_executor,
+        live_advisor=args.live_advisor,
+        live_timeout_seconds=args.live_timeout,
+    )
+    summary = result["summary"]
+    print("evaluation_id: {}".format(summary["evaluation_id"]))
+    print("eval_dir: {}".format(result["eval_dir"]))
+    print("verdict: {}".format(summary["verdict"]))
+    print("passed: {}/{}".format(summary["passed_count"], summary["scenario_count"]))
+    print("pass_rate: {:.3f}".format(summary["metrics"].get("pass_rate", 0.0)))
+    return 0 if summary["failed_count"] == 0 else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="maa", description="Multi-Agent Advisor harness")
     parser.add_argument("--version", action="version", version="maa {}".format(__version__))
@@ -100,6 +119,13 @@ def build_parser() -> argparse.ArgumentParser:
     review_parser.add_argument("--advisor", default="codex", choices=["kimi", "codex", "fake"])
     review_parser.add_argument("--timeout", default=240, type=int, help="Advisor timeout in seconds")
     review_parser.set_defaults(func=cmd_review)
+
+    eval_parser = subparsers.add_parser("eval", help="Run scaffold evaluation and regression scenarios")
+    eval_parser.add_argument("--include-live", action="store_true", help="Include one live Kimi/Codex smoke scenario")
+    eval_parser.add_argument("--live-executor", default="kimi", choices=["kimi", "codex", "fake"])
+    eval_parser.add_argument("--live-advisor", default="codex", choices=["kimi", "codex", "fake"])
+    eval_parser.add_argument("--live-timeout", default=240, type=int, help="Per-agent timeout for live scenarios")
+    eval_parser.set_defaults(func=cmd_eval)
 
     return parser
 

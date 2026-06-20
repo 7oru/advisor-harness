@@ -42,7 +42,9 @@ class FakeAdapter(AgentAdapter):
         elif "stop without done" in prompt_lower or "eval missing done" in prompt_lower:
             final = "Fake executor stopped without an EXECUTOR_DONE block."
         elif "eval no consult completion" in prompt_lower:
-            final = self._executor_done()
+            final = self._executor_done(
+                "Fake executor completed without advisor guidance because no hard decision was present."
+            )
         elif "eval malformed consult" in prompt_lower:
             final = self._malformed_consult()
         else:
@@ -140,10 +142,13 @@ class FakeAdapter(AgentAdapter):
             ]
         )
 
-    def _executor_done(self) -> str:
+    def _executor_done(
+        self,
+        summary: str = "Fake executor applied advisor guidance and completed the task.",
+    ) -> str:
         done = {
             "status": "completed",
-            "summary": "Fake executor applied advisor guidance and completed the task.",
+            "summary": summary,
         }
         return "\n".join(
             [
