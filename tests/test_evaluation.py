@@ -81,3 +81,20 @@ class EvaluationTests(TestCase):
             self.assertEqual(result["summary"]["verdict"], "regressed")
             self.assertEqual(result["summary"]["metrics"]["pass_rate"], 1.0)
             self.assertLess(result["summary"]["metrics"]["average_advisor_consults_per_run"], 1.0)
+
+    def test_default_evaluation_ignores_previous_live_suite(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            live_result = run_evaluation(
+                root=root,
+                include_live=True,
+                live_executor="fake",
+                live_advisor="fake",
+            )
+
+            result = run_evaluation(root=root)
+
+            self.assertEqual(live_result["summary"]["scenario_count"], 8)
+            self.assertEqual(result["summary"]["scenario_count"], 7)
+            self.assertEqual(result["summary"]["verdict"], "stable")
+            self.assertIsNone(result["summary"]["previous_evaluation_id"])

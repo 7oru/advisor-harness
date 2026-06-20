@@ -153,7 +153,7 @@ def run_evaluation(
             )
         )
 
-    previous_summary = _latest_previous_summary(root, exclude_dir=eval_dir)
+    previous_summary = _latest_previous_summary(root, exclude_dir=eval_dir, scenarios=scenarios)
     scenario_results = []
     for scenario in scenarios:
         scenario_result = _run_scenario(root=root, scenario=scenario)
@@ -266,7 +266,12 @@ def _compute_metrics(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-def _latest_previous_summary(root: Path, *, exclude_dir: Path) -> Dict[str, Any]:
+def _latest_previous_summary(
+    root: Path,
+    *,
+    exclude_dir: Path,
+    scenarios: Optional[List[EvalScenario]] = None,
+) -> Dict[str, Any]:
     summaries = []
     runs_dir = root / "runs"
     if not runs_dir.exists():
@@ -278,12 +283,39 @@ def _latest_previous_summary(root: Path, *, exclude_dir: Path) -> Dict[str, Any]
             value = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             continue
-        if isinstance(value, dict):
+        if isinstance(value, dict) and _matches_scenario_suite(value, scenarios):
             summaries.append(value)
     if not summaries:
         return {}
     summaries.sort(key=lambda item: str(item.get("created_at") or ""))
     return summaries[-1]
+
+
+def _matches_scenario_suite(summary: Dict[str, Any], scenarios: Optional[List[EvalScenario]]) -> bool:
+    if scenarios is None:
+        return True
+    expected_names = [scenario.name for scenario in scenarios]
+    if "include_live" in summary and bool(summary.get("include_live")) != any(
+        scenario.live for scenario in scenarios
+    ):
+        return False
+    if "scenario_count" in summary:
+        try:
+            if int(summary.get("scenario_count") or 0) != len(scenarios):
+                return False
+        except (TypeError, ValueError):
+            return False
+    previous_scenarios = summary.get("scenarios")
+    if previous_scenarios is None:
+        return True
+    if not isinstance(previous_scenarios, list):
+        return False
+    previous_names = []
+    for item in previous_scenarios:
+        if not isinstance(item, dict) or "name" not in item:
+            return False
+        previous_names.append(item["name"])
+    return previous_names == expected_names
 
 
 def _compare_to_previous(metrics: Dict[str, Any], previous_summary: Dict[str, Any]) -> str:
