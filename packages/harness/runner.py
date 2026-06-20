@@ -59,6 +59,7 @@ def run_task(
     advisor_consults: List[Dict[str, Any]] = []
     advisor_guidance: List[Dict[str, Any]] = []
     memory_proposals: List[Dict[str, Any]] = []
+    malformed_blocks: List[Dict[str, Any]] = []
     executor_done: Dict[str, Any] = {}
     status = "max_turns_reached"
     next_prompt = build_executor_prompt(
@@ -101,18 +102,45 @@ def run_task(
             },
         )
 
-        raw_memory = parse_json_blocks(executor_result.final_message, "MEMORY_PROPOSAL")
+        raw_memory = _parse_json_blocks(
+            executor_result.final_message,
+            "MEMORY_PROPOSAL",
+            run_dir=run_dir,
+            turn=turn,
+            malformed_blocks=malformed_blocks,
+        )
+        if malformed_blocks:
+            status = "malformed_block"
+            break
         for raw in raw_memory:
             proposal = prepare_memory_proposal(run_id, raw)
             memory_proposals.append(proposal)
             append_mailbox_record(root, "memory_proposals", proposal)
             _append_event(run_dir, {"type": "memory_proposal", "turn": turn, "proposal": proposal})
 
-        done_blocks = parse_json_blocks(executor_result.final_message, "EXECUTOR_DONE")
+        done_blocks = _parse_json_blocks(
+            executor_result.final_message,
+            "EXECUTOR_DONE",
+            run_dir=run_dir,
+            turn=turn,
+            malformed_blocks=malformed_blocks,
+        )
+        if malformed_blocks:
+            status = "malformed_block"
+            break
         if done_blocks:
             executor_done = done_blocks[0]
 
-        raw_consults = parse_json_blocks(executor_result.final_message, "ADVISOR_CONSULT")
+        raw_consults = _parse_json_blocks(
+            executor_result.final_message,
+            "ADVISOR_CONSULT",
+            run_dir=run_dir,
+            turn=turn,
+            malformed_blocks=malformed_blocks,
+        )
+        if malformed_blocks:
+            status = "malformed_block"
+            break
         if not raw_consults:
             if executor_result.exit_code != 0:
                 status = "executor_failed"
@@ -148,7 +176,16 @@ def run_task(
         write_agent_result(run_dir, "advisor_turn_{}".format(turn), advisor_result)
         write_text(run_dir / "advisor_turn_{}.final.md".format(turn), advisor_result.final_message)
 
-        guidance_blocks = parse_json_blocks(advisor_result.final_message, "ADVISOR_GUIDANCE")
+        guidance_blocks = _parse_json_blocks(
+            advisor_result.final_message,
+            "ADVISOR_GUIDANCE",
+            run_dir=run_dir,
+            turn=turn,
+            malformed_blocks=malformed_blocks,
+        )
+        if malformed_blocks:
+            status = "malformed_block"
+            break
         raw_guidance = guidance_blocks[0] if guidance_blocks else _fallback_guidance(advisor_result.final_message)
         guidance = prepare_advisor_guidance(consult["id"], raw_guidance)
         advisor_guidance.append(guidance)
@@ -174,6 +211,7 @@ def run_task(
     write_jsonl(run_dir / "advisor_consults.jsonl", advisor_consults)
     write_jsonl(run_dir / "advisor_guidance.jsonl", advisor_guidance)
     write_jsonl(run_dir / "memory_proposals.jsonl", memory_proposals)
+    write_jsonl(run_dir / "malformed_blocks.jsonl", malformed_blocks)
 
     outcome = {
         "run_id": run_id,
@@ -185,6 +223,8 @@ def run_task(
         "advisor_consult_count": len(advisor_consults),
         "advisor_guidance_count": len(advisor_guidance),
         "memory_proposal_count": len(memory_proposals),
+        "malformed_block_count": len(malformed_blocks),
+        "malformed_blocks": malformed_blocks,
         "max_turns": max_turns,
         "max_advisor_calls": max_advisor_calls,
         "executor_done": executor_done,
@@ -192,6 +232,27 @@ def run_task(
     write_outcome(run_dir, outcome)
     _append_event(run_dir, {"type": "run_completed", "outcome": outcome})
     return RunResult(run_id=run_id, run_dir=run_dir, outcome=outcome)
+
+
+def _parse_json_blocks(
+    text: str,
+    tag: str,
+    *,
+    run_dir: Path,
+    turn: int,
+    malformed_blocks: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    try:
+        return parse_json_blocks(text, tag)
+    except ValueError as exc:
+        record = {
+            "tag": tag,
+            "turn": turn,
+            "error": str(exc),
+        }
+        malformed_blocks.append(record)
+        _append_event(run_dir, {"type": "malformed_block", "turn": turn, "block": record})
+        return []
 
 
 def _append_event(run_dir: Path, event: Dict[str, Any]) -> None:

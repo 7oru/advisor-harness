@@ -26,13 +26,25 @@ class FakeAdapter(AgentAdapter):
     ) -> AgentResult:
         prompt_lower = prompt.lower()
         if "current consultation request:" in prompt_lower:
-            final = self._advisor_guidance()
+            if "eval malformed guidance" in prompt_lower:
+                final = self._malformed_guidance()
+            elif "eval advisor stop" in prompt_lower:
+                final = self._advisor_stop_guidance()
+            else:
+                final = self._advisor_guidance()
         elif "post-run review request:" in prompt_lower or "post run review request:" in prompt_lower:
             final = self._post_run_review()
         elif "advisor guidance to executor:" in prompt_lower:
-            final = self._executor_done()
-        elif "stop without done" in prompt_lower:
+            if "eval max turns" in prompt_lower:
+                final = self._executor_consult(question="Should the fake executor keep consulting?")
+            else:
+                final = self._executor_done()
+        elif "stop without done" in prompt_lower or "eval missing done" in prompt_lower:
             final = "Fake executor stopped without an EXECUTOR_DONE block."
+        elif "eval no consult completion" in prompt_lower:
+            final = self._executor_done()
+        elif "eval malformed consult" in prompt_lower:
+            final = self._malformed_consult()
         else:
             final = self._executor_consult()
         return AgentResult(
@@ -50,9 +62,9 @@ class FakeAdapter(AgentAdapter):
             },
         )
 
-    def _executor_consult(self) -> str:
+    def _executor_consult(self, question: str = "Should the fake executor choose the simple scaffold path?") -> str:
         consult = {
-            "question": "Should the fake executor choose the simple scaffold path?",
+            "question": question,
             "context": "The fake executor is simulating a hard decision before finalizing.",
             "options": ["simple scaffold", "overbuilt framework"],
             "preferred_option": "simple scaffold",
@@ -78,6 +90,16 @@ class FakeAdapter(AgentAdapter):
             ]
         )
 
+    def _malformed_consult(self) -> str:
+        return "\n".join(
+            [
+                "Fake executor emitted malformed consultation.",
+                "<ADVISOR_CONSULT>",
+                '{"question": ',
+                "</ADVISOR_CONSULT>",
+            ]
+        )
+
     def _advisor_guidance(self) -> str:
         guidance = {
             "guidance": "Choose the simple scaffold path and verify the resume loop.",
@@ -89,6 +111,31 @@ class FakeAdapter(AgentAdapter):
                 "Fake advisor returned guidance.",
                 "<ADVISOR_GUIDANCE>",
                 json.dumps(guidance, indent=2, sort_keys=True),
+                "</ADVISOR_GUIDANCE>",
+            ]
+        )
+
+    def _advisor_stop_guidance(self) -> str:
+        guidance = {
+            "guidance": "Stop the run because the fake advisor stop regression requested it.",
+            "rationale": "This deterministic scenario verifies advisor stop-signal handling.",
+            "stop_signal": True,
+        }
+        return "\n".join(
+            [
+                "Fake advisor returned stop guidance.",
+                "<ADVISOR_GUIDANCE>",
+                json.dumps(guidance, indent=2, sort_keys=True),
+                "</ADVISOR_GUIDANCE>",
+            ]
+        )
+
+    def _malformed_guidance(self) -> str:
+        return "\n".join(
+            [
+                "Fake advisor emitted malformed guidance.",
+                "<ADVISOR_GUIDANCE>",
+                '{"guidance": ',
                 "</ADVISOR_GUIDANCE>",
             ]
         )

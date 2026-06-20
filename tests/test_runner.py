@@ -33,6 +33,7 @@ class RunnerTests(TestCase):
             self.assertEqual(result.outcome["advisor_consult_count"], 1)
             self.assertEqual(result.outcome["advisor_guidance_count"], 1)
             self.assertEqual(result.outcome["memory_proposal_count"], 1)
+            self.assertEqual(result.outcome["malformed_block_count"], 0)
             self.assertFalse((root / "memory" / "facts.jsonl").exists())
 
     def test_fake_review_writes_review_files(self):
@@ -74,3 +75,54 @@ class RunnerTests(TestCase):
             self.assertEqual(result.outcome["executor_turn_count"], 1)
             self.assertEqual(result.outcome["advisor_consult_count"], 0)
             self.assertEqual(result.outcome["executor_done"], {})
+
+    def test_malformed_consult_sets_malformed_status(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            init_workspace(root)
+            result = run_task(
+                root=root,
+                task="eval malformed consult",
+                executor_backend="fake",
+                advisor_backend="fake",
+                timeout_seconds=10,
+            )
+
+            self.assertEqual(result.outcome["status"], "malformed_block")
+            self.assertEqual(result.outcome["malformed_block_count"], 1)
+            self.assertEqual(result.outcome["malformed_blocks"][0]["tag"], "ADVISOR_CONSULT")
+            self.assertTrue((result.run_dir / "malformed_blocks.jsonl").exists())
+
+    def test_advisor_stop_signal_sets_status(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            init_workspace(root)
+            result = run_task(
+                root=root,
+                task="eval advisor stop",
+                executor_backend="fake",
+                advisor_backend="fake",
+                timeout_seconds=10,
+            )
+
+            self.assertEqual(result.outcome["status"], "advisor_stop_signal")
+            self.assertEqual(result.outcome["advisor_consult_count"], 1)
+            self.assertEqual(result.outcome["advisor_guidance_count"], 1)
+
+    def test_max_turns_reached_status(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            init_workspace(root)
+            result = run_task(
+                root=root,
+                task="eval max turns",
+                executor_backend="fake",
+                advisor_backend="fake",
+                timeout_seconds=10,
+                max_turns=2,
+                max_advisor_calls=2,
+            )
+
+            self.assertEqual(result.outcome["status"], "max_turns_reached")
+            self.assertEqual(result.outcome["executor_turn_count"], 2)
+            self.assertEqual(result.outcome["advisor_consult_count"], 2)
