@@ -292,11 +292,13 @@ def _compare_to_previous(metrics: Dict[str, Any], previous_summary: Dict[str, An
     previous_metrics = previous_summary.get("metrics") or {}
     current_pass_rate = float(metrics.get("pass_rate") or 0.0)
     previous_pass_rate = float(previous_metrics.get("pass_rate") or 0.0)
+    behavior_verdict = _compare_behavior_metrics(metrics, previous_metrics)
+    if behavior_verdict == "regressed":
+        return behavior_verdict
     if current_pass_rate > previous_pass_rate:
         return "improved"
     if current_pass_rate < previous_pass_rate:
         return "regressed"
-    behavior_verdict = _compare_behavior_metrics(metrics, previous_metrics)
     if behavior_verdict:
         return behavior_verdict
     return "stable"
