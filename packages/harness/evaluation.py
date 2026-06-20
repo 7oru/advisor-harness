@@ -13,6 +13,15 @@ from packages.harness.jsonl import append_jsonl
 from packages.harness.runner import RunResult, run_task
 
 
+_BEHAVIOR_METRIC_DIRECTIONS = {
+    "malformed_block_rate": "lower",
+    "completion_without_executor_done_rate": "lower",
+    "average_advisor_consults_per_run": "higher",
+    "max_turn_exhaustion_rate": "lower",
+    "advisor_guidance_application_rate": "higher",
+}
+
+
 @dataclass(frozen=True)
 class EvalScenario:
     name: str
@@ -287,7 +296,28 @@ def _compare_to_previous(metrics: Dict[str, Any], previous_summary: Dict[str, An
         return "improved"
     if current_pass_rate < previous_pass_rate:
         return "regressed"
+    behavior_verdict = _compare_behavior_metrics(metrics, previous_metrics)
+    if behavior_verdict:
+        return behavior_verdict
     return "stable"
+
+
+def _compare_behavior_metrics(metrics: Dict[str, Any], previous_metrics: Dict[str, Any]) -> str:
+    improved = False
+    for key, direction in _BEHAVIOR_METRIC_DIRECTIONS.items():
+        if key not in metrics or key not in previous_metrics:
+            continue
+        current_value = float(metrics.get(key) or 0.0)
+        previous_value = float(previous_metrics.get(key) or 0.0)
+        if current_value == previous_value:
+            continue
+        current_is_better = (
+            current_value > previous_value if direction == "higher" else current_value < previous_value
+        )
+        if not current_is_better:
+            return "regressed"
+        improved = True
+    return "improved" if improved else ""
 
 
 def _summary_markdown(summary: Dict[str, Any]) -> str:

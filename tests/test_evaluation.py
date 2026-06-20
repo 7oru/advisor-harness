@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
@@ -32,3 +33,27 @@ class EvaluationTests(TestCase):
 
             self.assertEqual(result["summary"]["verdict"], "stable")
             self.assertIsNotNone(result["summary"]["previous_evaluation_id"])
+
+    def test_evaluation_regresses_when_consultation_metric_drops(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            previous_dir = root / "runs" / "eval_previous"
+            previous_dir.mkdir(parents=True)
+            previous_summary = {
+                "evaluation_id": "eval_previous",
+                "created_at": "2000-01-01T00:00:00Z",
+                "metrics": {
+                    "pass_rate": 1.0,
+                    "average_advisor_consults_per_run": 1.0,
+                },
+            }
+            (previous_dir / "evaluation_summary.json").write_text(
+                json.dumps(previous_summary),
+                encoding="utf-8",
+            )
+
+            result = run_evaluation(root=root)
+
+            self.assertEqual(result["summary"]["verdict"], "regressed")
+            self.assertEqual(result["summary"]["metrics"]["pass_rate"], 1.0)
+            self.assertLess(result["summary"]["metrics"]["average_advisor_consults_per_run"], 1.0)
