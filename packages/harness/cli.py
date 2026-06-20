@@ -13,6 +13,7 @@ from packages.harness.defaults import init_workspace
 from packages.harness.evaluation import run_evaluation
 from packages.harness.review import review_run
 from packages.harness.runner import run_task
+from packages.harness.ui import dashboard_url, render_dashboard, serve_dashboard
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
@@ -88,6 +89,17 @@ def cmd_eval(args: argparse.Namespace) -> int:
     return 0 if summary["failed_count"] == 0 else 1
 
 
+def cmd_ui(args: argparse.Namespace) -> int:
+    root = Path(args.cwd).resolve()
+    output_path = Path(args.output).expanduser() if args.output else None
+    rendered_path = render_dashboard(root, output_path=output_path, run_id=args.run)
+    print("ui: {}".format(rendered_path))
+    if args.serve:
+        print("url: {}".format(dashboard_url(rendered_path, port=args.port)))
+        serve_dashboard(rendered_path, port=args.port)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="maa", description="Multi-Agent Advisor harness")
     parser.add_argument("--version", action="version", version="maa {}".format(__version__))
@@ -126,6 +138,13 @@ def build_parser() -> argparse.ArgumentParser:
     eval_parser.add_argument("--live-advisor", default="codex", choices=["kimi", "codex", "fake"])
     eval_parser.add_argument("--live-timeout", default=240, type=int, help="Per-agent timeout for live scenarios")
     eval_parser.set_defaults(func=cmd_eval)
+
+    ui_parser = subparsers.add_parser("ui", help="Render or serve the persisted run timeline UI")
+    ui_parser.add_argument("--run", help="Run id to select when the UI opens")
+    ui_parser.add_argument("--output", help="HTML output path. Defaults to runs/ui/index.html")
+    ui_parser.add_argument("--serve", action="store_true", help="Serve the rendered UI on localhost")
+    ui_parser.add_argument("--port", default=8765, type=int, help="Localhost port for --serve")
+    ui_parser.set_defaults(func=cmd_ui)
 
     return parser
 

@@ -28,6 +28,7 @@ maa doctor
 maa init
 maa run "fake smoke task" --executor fake --advisor fake --max-turns 3 --max-advisor-calls 3
 maa eval
+maa ui
 maa review --run <run_id> --advisor fake
 ```
 
@@ -47,6 +48,15 @@ maa eval --include-live --live-timeout 240
 ```
 
 `maa eval` runs deterministic fake regression scenarios for autonomous consultation, no-consult completion, malformed blocks, advisor stop signals, max-turn exhaustion, and missing `EXECUTOR_DONE`. It writes `evaluation_summary.json`, `evaluation_summary.md`, and `scenario_results.jsonl` under `runs/eval_*/`.
+
+Run timeline UI:
+
+```bash
+maa ui
+maa ui --serve --port 8765
+```
+
+`maa ui` renders a local HTML dashboard to `runs/ui/index.html` from the SQLite run database. The dashboard filters persisted runs by status, backend, advisor call count, task text, and error mode, then shows the selected run timeline, prompts, raw CLI outputs, consult reasons, guidance, memory proposals, and outcome.
 
 ## Advisor Protocol
 
@@ -85,9 +95,11 @@ Runtime state is local and gitignored:
 - `runs/<run_id>/`
 - `mailbox/*.jsonl`
 - `memory/*.jsonl`
+- `memory/advisor_runs.db`
 
 Important run files:
 
+- `memory/advisor_runs.db`: queryable source of truth for persisted runs, events, turns, consults, guidance, memory proposals, malformed blocks, and outcomes
 - `session_events.jsonl`: durable cross-session event log
 - `advisor_consults.jsonl`: executor consultation requests
 - `advisor_guidance.jsonl`: advisor guidance returned to executor
@@ -95,6 +107,7 @@ Important run files:
 - `advisor_turn_<n>.*`: advisor CLI outputs
 - `outcome.json`: run status and counters
 - `evaluation_summary.json`: evaluation metrics and scenario results for `maa eval`
+- `runs/ui/index.html`: generated local run timeline dashboard
 
 The `outcome.json` file includes the executor session id, executor turn count, advisor consultation count, guidance count, and completion status.
 

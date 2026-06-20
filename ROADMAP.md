@@ -59,6 +59,13 @@ Acceptance signal:
 
 - A user can open a local UI, inspect a run timeline, and understand exactly when the executor consulted the advisor and how guidance changed the next executor turn.
 
+Current scaffold support:
+
+- `maa run` persists runs to `memory/advisor_runs.db` while keeping JSONL and text artifacts for export/debug.
+- The database records run summaries, session events, executor/advisor turns, advisor consultations, advisor guidance, memory proposals, malformed blocks, and outcomes.
+- `maa ui` renders `runs/ui/index.html` from the database, with filters for status, backend, advisor call count, task text, and error mode.
+- `maa ui --serve --port 8765` serves the rendered dashboard on localhost for browser inspection.
+
 ## Phase 3: Add a Focused Vertical Application
 
 Goal: validate the generic harness against a narrow, high-value domain without polluting the core runtime.
