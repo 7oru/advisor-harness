@@ -494,7 +494,13 @@ class RunDatabase:
         self.initialize()
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT * FROM agent_turns WHERE run_id = ? ORDER BY turn, role",
+                """
+                SELECT * FROM agent_turns
+                WHERE run_id = ?
+                ORDER BY turn,
+                    CASE role WHEN 'executor' THEN 0 WHEN 'advisor' THEN 1 ELSE 2 END,
+                    id
+                """,
                 (run_id,),
             ).fetchall()
         return [_row_with_json(row, json_columns=("raw_json",)) for row in rows]

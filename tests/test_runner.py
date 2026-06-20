@@ -3,6 +3,7 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 
 from packages.harness.defaults import init_workspace
+from packages.harness.database import RunDatabase, database_path
 from packages.harness.review import review_run
 from packages.harness.runner import run_task
 
@@ -35,6 +36,16 @@ class RunnerTests(TestCase):
             self.assertEqual(result.outcome["memory_proposal_count"], 1)
             self.assertEqual(result.outcome["malformed_block_count"], 0)
             self.assertFalse((root / "memory" / "facts.jsonl").exists())
+
+            self.assertTrue(database_path(root).exists())
+            payload = RunDatabase.for_root(root).run_payload(result.run_id)
+            self.assertEqual(payload["run"]["status"], "completed")
+            self.assertEqual(payload["run"]["error_mode"], "none")
+            self.assertEqual(len(payload["events"]), 7)
+            self.assertEqual([turn["role"] for turn in payload["agent_turns"]], ["executor", "advisor", "executor"])
+            self.assertEqual(payload["advisor_consults"][0]["turn"], 1)
+            self.assertEqual(payload["advisor_guidance"][0]["consult_id"], payload["advisor_consults"][0]["id"])
+            self.assertEqual(payload["memory_proposals"][0]["run_id"], result.run_id)
 
     def test_fake_review_writes_review_files(self):
         with TemporaryDirectory() as td:

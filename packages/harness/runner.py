@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from packages.adapters import create_adapter
 from packages.harness.artifacts import ensure_run_dir, utc_now, write_agent_result, write_outcome, write_text
+from packages.harness.database import RunDatabase
 from packages.harness.defaults import init_workspace
 from packages.harness.jsonl import append_jsonl, write_jsonl
 from packages.harness.mailbox import (
@@ -44,6 +45,7 @@ def run_task(
     max_advisor_calls: int = 3,
 ) -> RunResult:
     init_workspace(root)
+    db = RunDatabase.for_root(root)
     run_dir = ensure_run_dir(root)
     run_id = run_dir.name
     executor_session_id = "{}_executor".format(run_id)
@@ -70,6 +72,17 @@ def run_task(
     )
     write_text(run_dir / "executor_initial.prompt.md", next_prompt)
 
+    run_started_at = utc_now()
+    db.record_run_started(
+        run_id=run_id,
+        task=task,
+        executor_backend=executor_backend,
+        advisor_backend=advisor_backend,
+        executor_session_id=executor_session_id,
+        max_turns=max_turns,
+        max_advisor_calls=max_advisor_calls,
+        created_at=run_started_at,
+    )
     _append_event(
         run_dir,
         {
@@ -79,7 +92,10 @@ def run_task(
             "executor_backend": executor_backend,
             "advisor_backend": advisor_backend,
             "executor_session_id": executor_session_id,
+            "created_at": run_started_at,
         },
+        db=db,
+        run_id=run_id,
     )
 
     for turn in range(1, max_turns + 1):
@@ -92,6 +108,17 @@ def run_task(
         )
         write_agent_result(run_dir, "executor_turn_{}".format(turn), executor_result)
         write_text(run_dir / "executor_turn_{}.final.md".format(turn), executor_result.final_message)
+        _record_agent_turn(
+            db=db,
+            root=root,
+            run_dir=run_dir,
+            run_id=run_id,
+            role="executor",
+            turn=turn,
+            prompt_text=next_prompt,
+            prefix="executor_turn_{}".format(turn),
+            result=executor_result,
+        )
         _append_event(
             run_dir,
             {
@@ -100,13 +127,17 @@ def run_task(
                 "exit_code": executor_result.exit_code,
                 "final_message": executor_result.final_message,
             },
+            db=db,
+            run_id=run_id,
         )
 
         raw_memory = _parse_json_blocks(
             executor_result.final_message,
             "MEMORY_PROPOSAL",
             run_dir=run_dir,
+            run_id=run_id,
             turn=turn,
+            db=db,
             malformed_blocks=malformed_blocks,
         )
         if malformed_blocks:
@@ -116,13 +147,21 @@ def run_task(
             proposal = prepare_memory_proposal(run_id, raw)
             memory_proposals.append(proposal)
             append_mailbox_record(root, "memory_proposals", proposal)
-            _append_event(run_dir, {"type": "memory_proposal", "turn": turn, "proposal": proposal})
+            db.record_memory_proposal(proposal)
+            _append_event(
+                run_dir,
+                {"type": "memory_proposal", "turn": turn, "proposal": proposal},
+                db=db,
+                run_id=run_id,
+            )
 
         done_blocks = _parse_json_blocks(
             executor_result.final_message,
             "EXECUTOR_DONE",
             run_dir=run_dir,
+            run_id=run_id,
             turn=turn,
+            db=db,
             malformed_blocks=malformed_blocks,
         )
         if malformed_blocks:
@@ -135,7 +174,9 @@ def run_task(
             executor_result.final_message,
             "ADVISOR_CONSULT",
             run_dir=run_dir,
+            run_id=run_id,
             turn=turn,
+            db=db,
             malformed_blocks=malformed_blocks,
         )
         if malformed_blocks:
@@ -157,7 +198,13 @@ def run_task(
         consult = prepare_advisor_consult(run_id, turn, raw_consults[0])
         advisor_consults.append(consult)
         append_mailbox_record(root, "advisor_consults", consult)
-        _append_event(run_dir, {"type": "advisor_consult", "turn": turn, "consult": consult})
+        db.record_advisor_consult(consult)
+        _append_event(
+            run_dir,
+            {"type": "advisor_consult", "turn": turn, "consult": consult},
+            db=db,
+            run_id=run_id,
+        )
 
         session_context = _session_context(run_dir)
         advisor_prompt = build_advisor_prompt(
@@ -175,12 +222,25 @@ def run_task(
         )
         write_agent_result(run_dir, "advisor_turn_{}".format(turn), advisor_result)
         write_text(run_dir / "advisor_turn_{}.final.md".format(turn), advisor_result.final_message)
+        _record_agent_turn(
+            db=db,
+            root=root,
+            run_dir=run_dir,
+            run_id=run_id,
+            role="advisor",
+            turn=turn,
+            prompt_text=advisor_prompt,
+            prefix="advisor_turn_{}".format(turn),
+            result=advisor_result,
+        )
 
         guidance_blocks = _parse_json_blocks(
             advisor_result.final_message,
             "ADVISOR_GUIDANCE",
             run_dir=run_dir,
+            run_id=run_id,
             turn=turn,
+            db=db,
             malformed_blocks=malformed_blocks,
         )
         if malformed_blocks:
@@ -190,6 +250,7 @@ def run_task(
         guidance = prepare_advisor_guidance(consult["id"], raw_guidance)
         advisor_guidance.append(guidance)
         append_mailbox_record(root, "advisor_guidance", guidance)
+        db.record_advisor_guidance(run_id=run_id, turn=turn, guidance=guidance)
         _append_event(
             run_dir,
             {
@@ -198,6 +259,8 @@ def run_task(
                 "exit_code": advisor_result.exit_code,
                 "guidance": guidance,
             },
+            db=db,
+            run_id=run_id,
         )
 
         if guidance.get("stop_signal"):
@@ -228,9 +291,11 @@ def run_task(
         "max_turns": max_turns,
         "max_advisor_calls": max_advisor_calls,
         "executor_done": executor_done,
+        "completed_at": utc_now(),
     }
     write_outcome(run_dir, outcome)
-    _append_event(run_dir, {"type": "run_completed", "outcome": outcome})
+    db.record_outcome(outcome)
+    _append_event(run_dir, {"type": "run_completed", "outcome": outcome}, db=db, run_id=run_id)
     return RunResult(run_id=run_id, run_dir=run_dir, outcome=outcome)
 
 
@@ -239,7 +304,9 @@ def _parse_json_blocks(
     tag: str,
     *,
     run_dir: Path,
+    run_id: str,
     turn: int,
+    db: RunDatabase,
     malformed_blocks: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
     try:
@@ -251,14 +318,72 @@ def _parse_json_blocks(
             "error": str(exc),
         }
         malformed_blocks.append(record)
-        _append_event(run_dir, {"type": "malformed_block", "turn": turn, "block": record})
+        db.record_malformed_block(run_id=run_id, turn=turn, block=record)
+        _append_event(
+            run_dir,
+            {"type": "malformed_block", "turn": turn, "block": record},
+            db=db,
+            run_id=run_id,
+        )
         return []
 
 
-def _append_event(run_dir: Path, event: Dict[str, Any]) -> None:
+def _append_event(
+    run_dir: Path,
+    event: Dict[str, Any],
+    *,
+    db: Optional[RunDatabase] = None,
+    run_id: Optional[str] = None,
+) -> None:
     payload = dict(event)
     payload.setdefault("created_at", utc_now())
+    if run_id:
+        payload.setdefault("run_id", run_id)
     append_jsonl(run_dir / "session_events.jsonl", payload)
+    if db is not None and run_id:
+        db.record_session_event(run_id, payload)
+
+
+def _record_agent_turn(
+    *,
+    db: RunDatabase,
+    root: Path,
+    run_dir: Path,
+    run_id: str,
+    role: str,
+    turn: int,
+    prompt_text: str,
+    prefix: str,
+    result: Any,
+) -> None:
+    raw_payload = {
+        "exit_code": result.exit_code,
+        "events_path": result.events_path,
+        "session_id": result.session_id,
+        "raw_artifacts": result.raw_artifacts,
+    }
+    db.record_agent_turn(
+        run_id=run_id,
+        role=role,
+        turn=turn,
+        exit_code=result.exit_code,
+        prompt_text=prompt_text,
+        final_message=result.final_message,
+        stdout_text=result.stdout,
+        stderr_text=result.stderr,
+        raw_payload=raw_payload,
+        prompt_path=_relative_artifact_path(root, run_dir / "{}.prompt.md".format(prefix)),
+        stdout_path=_relative_artifact_path(root, run_dir / "{}.stdout.txt".format(prefix)),
+        stderr_path=_relative_artifact_path(root, run_dir / "{}.stderr.txt".format(prefix)),
+        raw_path=_relative_artifact_path(root, run_dir / "{}.raw.json".format(prefix)),
+    )
+
+
+def _relative_artifact_path(root: Path, path: Path) -> str:
+    try:
+        return str(path.relative_to(root))
+    except ValueError:
+        return str(path)
 
 
 def _session_context(run_dir: Path, max_chars: int = 24000) -> str:
