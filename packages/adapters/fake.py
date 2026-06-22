@@ -25,7 +25,9 @@ class FakeAdapter(AgentAdapter):
         timeout_seconds: Optional[int] = None,
     ) -> AgentResult:
         prompt_lower = prompt.lower()
-        if "current consultation request:" in prompt_lower:
+        if "post-run review request:" in prompt_lower or "post run review request:" in prompt_lower:
+            final = self._post_run_review()
+        elif "current consultation request:" in prompt_lower:
             if "release readiness vertical workflow" in prompt_lower:
                 final = self._release_readiness_guidance()
             elif "eval malformed guidance" in prompt_lower:
@@ -34,8 +36,6 @@ class FakeAdapter(AgentAdapter):
                 final = self._advisor_stop_guidance()
             else:
                 final = self._advisor_guidance()
-        elif "post-run review request:" in prompt_lower or "post run review request:" in prompt_lower:
-            final = self._post_run_review()
         elif "advisor guidance to executor:" in prompt_lower:
             if "release readiness vertical workflow" in prompt_lower:
                 final = self._release_readiness_done()
@@ -257,6 +257,45 @@ class FakeAdapter(AgentAdapter):
         )
 
     def _post_run_review(self) -> str:
+        proposals = {
+            "schema_version": "improvement-proposals.v1",
+            "summary": "Fake post-run review found no required changes but emitted auditable proposal slots.",
+            "proposals": [
+                {
+                    "id": "memory_schema_no_change",
+                    "target": "memory_schema",
+                    "title": "Keep current memory schema",
+                    "rationale": "The fake run memory proposal fits the current schema.",
+                    "evidence": "Fake smoke run proposed an episode with content, source excerpt, confidence, and tags.",
+                    "proposed_change": "No change recommended.",
+                    "validation_plan": "Run python3 -m unittest discover -s tests.",
+                    "requires_human_approval": True,
+                    "status": "proposed",
+                },
+                {
+                    "id": "executor_prompt_no_change",
+                    "target": "executor_prompt",
+                    "title": "Keep current executor prompt",
+                    "rationale": "The fake executor consulted once and resumed after guidance.",
+                    "evidence": "The run completed with one advisor consultation and EXECUTOR_DONE.",
+                    "proposed_change": "No change recommended.",
+                    "validation_plan": "Run fake consult-guidance-resume regression scenarios.",
+                    "requires_human_approval": True,
+                    "status": "proposed",
+                },
+                {
+                    "id": "advisor_prompt_no_change",
+                    "target": "advisor_prompt",
+                    "title": "Keep current advisor prompt",
+                    "rationale": "The fake advisor returned bounded guidance without a stop signal.",
+                    "evidence": "Advisor guidance included guidance, rationale, and stop_signal fields.",
+                    "proposed_change": "No change recommended.",
+                    "validation_plan": "Run fake post-run review and verify structured proposal validation.",
+                    "requires_human_approval": True,
+                    "status": "proposed",
+                },
+            ],
+        }
         return "\n".join(
             [
                 "## Post-Run Review",
@@ -268,5 +307,9 @@ class FakeAdapter(AgentAdapter):
                 "## Suggested Routing Policy Patch",
                 "",
                 "No policy changes suggested for fake smoke run.",
+                "",
+                "<IMPROVEMENT_PROPOSALS>",
+                json.dumps(proposals, indent=2, sort_keys=True),
+                "</IMPROVEMENT_PROPOSALS>",
             ]
         )

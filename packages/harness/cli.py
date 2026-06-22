@@ -69,6 +69,8 @@ def cmd_review(args: argparse.Namespace) -> int:
     print("status: {}".format(outcome["status"]))
     print("post_run_review: {}".format(run_dir / "post_run_review.md"))
     print("policy_patch_proposal: {}".format(run_dir / "policy_patch_proposal.md"))
+    print("improvement_proposals: {}".format(run_dir / "improvement_proposals.json"))
+    print("improvement_proposals_valid: {}".format(outcome.get("improvement_proposals_valid")))
     return 0 if outcome["status"] == "completed" else 1
 
 

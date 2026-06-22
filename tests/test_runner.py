@@ -102,8 +102,12 @@ class RunnerTests(TestCase):
             )
 
             self.assertEqual(review["status"], "completed")
+            self.assertEqual(review["improvement_proposal_count"], 3)
+            self.assertTrue(review["improvement_proposals_valid"])
             self.assertTrue((result.run_dir / "post_run_review.md").exists())
             self.assertTrue((result.run_dir / "policy_patch_proposal.md").exists())
+            self.assertTrue((result.run_dir / "improvement_proposals.json").exists())
+            self.assertTrue((result.run_dir / "improvement_proposals.md").exists())
 
     def test_run_requires_executor_done_for_completed_status(self):
         with TemporaryDirectory() as td:
