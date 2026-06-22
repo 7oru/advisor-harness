@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import Optional
 
 
+EXECUTOR_PROMPT_VERSION = "executor-start.v1"
+
+
 def build_executor_prompt(
     *,
     task: str,

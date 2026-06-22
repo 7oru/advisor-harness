@@ -14,6 +14,8 @@ DEFAULT_DIRECTORIES = (
     "runs",
 )
 
+MEMORY_SCHEMA_VERSION = "memory-record.v1"
+
 ROUTING_POLICY_MD = """# Routing Policy
 
 Advisor should be consulted when any of the following are present:
@@ -57,6 +59,7 @@ Every approved memory record must include a source run, source excerpt, confiden
 
 MEMORY_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "x-maa-version": MEMORY_SCHEMA_VERSION,
     "title": "Multi-Agent Advisor Memory Record",
     "type": "object",
     "required": [

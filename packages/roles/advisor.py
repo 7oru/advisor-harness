@@ -6,6 +6,9 @@ import json
 from typing import Any, Dict
 
 
+ADVISOR_PROMPT_VERSION = "advisor-guidance.v1"
+
+
 def build_advisor_prompt(
     *,
     run_id: str,

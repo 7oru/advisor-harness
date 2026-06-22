@@ -1,5 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "x-maa-version": "memory-record.v1",
   "properties": {
     "approved_by": {
       "type": "string"

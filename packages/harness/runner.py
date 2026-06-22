@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from packages.adapters import create_adapter
-from packages.harness.artifacts import ensure_run_dir, utc_now, write_agent_result, write_outcome, write_text
+from packages.harness.artifacts import ensure_run_dir, utc_now, write_agent_result, write_json, write_outcome, write_text
 from packages.harness.database import RunDatabase
 from packages.harness.defaults import init_workspace
 from packages.harness.jsonl import append_jsonl, write_jsonl
@@ -23,6 +23,7 @@ from packages.harness.parser import parse_json_blocks
 from packages.harness.policy import load_policy_summary
 from packages.roles.advisor import build_advisor_prompt
 from packages.roles.executor import build_executor_prompt
+from packages.harness.versions import build_run_version_manifest
 
 
 @dataclass
@@ -49,7 +50,9 @@ def run_task(
     run_dir = ensure_run_dir(root)
     run_id = run_dir.name
     executor_session_id = "{}_executor".format(run_id)
+    version_manifest = build_run_version_manifest(root)
     write_text(run_dir / "task.md", task + "\n")
+    write_json(run_dir / "version_manifest.json", version_manifest)
 
     for name, content in (extra_artifacts or {}).items():
         write_text(run_dir / name, content)
@@ -92,6 +95,7 @@ def run_task(
             "executor_backend": executor_backend,
             "advisor_backend": advisor_backend,
             "executor_session_id": executor_session_id,
+            "version_manifest": version_manifest,
             "created_at": run_started_at,
         },
         db=db,
@@ -293,6 +297,7 @@ def run_task(
         "max_turns": max_turns,
         "max_advisor_calls": max_advisor_calls,
         "executor_done": executor_done,
+        "version_manifest": version_manifest,
         "completed_at": utc_now(),
     }
     write_outcome(run_dir, outcome)

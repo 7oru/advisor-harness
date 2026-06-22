@@ -50,8 +50,17 @@ class RunnerTests(TestCase):
             self.assertTrue((result.run_dir / "advisor_consults.jsonl").exists())
             self.assertTrue((result.run_dir / "advisor_guidance.jsonl").exists())
             self.assertTrue((result.run_dir / "memory_proposals.jsonl").exists())
+            self.assertTrue((result.run_dir / "version_manifest.json").exists())
             self.assertTrue((result.run_dir / "outcome.json").exists())
             self.assertEqual(result.outcome["status"], "completed")
+            self.assertEqual(
+                result.outcome["version_manifest"]["prompt_versions"]["executor_start"],
+                "executor-start.v1",
+            )
+            self.assertEqual(
+                result.outcome["version_manifest"]["memory_schema"]["version"],
+                "memory-record.v1",
+            )
             self.assertEqual(result.outcome["executor_turn_count"], 2)
             self.assertEqual(result.outcome["advisor_consult_count"], 1)
             self.assertEqual(result.outcome["advisor_guidance_count"], 1)
@@ -63,6 +72,10 @@ class RunnerTests(TestCase):
             payload = RunDatabase.for_root(root).run_payload(result.run_id)
             self.assertEqual(payload["run"]["status"], "completed")
             self.assertEqual(payload["run"]["error_mode"], "none")
+            self.assertEqual(
+                payload["run"]["outcome"]["version_manifest"]["prompt_versions"]["advisor_guidance"],
+                "advisor-guidance.v1",
+            )
             self.assertEqual(len(payload["events"]), 7)
             self.assertEqual([turn["role"] for turn in payload["agent_turns"]], ["executor", "advisor", "executor"])
             self.assertEqual(payload["advisor_consults"][0]["turn"], 1)
