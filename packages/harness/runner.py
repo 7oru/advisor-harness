@@ -234,6 +234,10 @@ def run_task(
             result=advisor_result,
         )
 
+        if advisor_result.exit_code != 0:
+            status = "advisor_failed"
+            break
+
         guidance_blocks = _parse_json_blocks(
             advisor_result.final_message,
             "ADVISOR_GUIDANCE",

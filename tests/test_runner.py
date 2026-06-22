@@ -1,11 +1,33 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
+from unittest.mock import patch
 
+from packages.adapters.base import AgentResult
+from packages.adapters.fake import FakeAdapter
 from packages.harness.defaults import init_workspace
 from packages.harness.database import RunDatabase, database_path
+from packages.harness.jsonl import read_jsonl
 from packages.harness.review import review_run
 from packages.harness.runner import run_task
+
+
+class FailingAdvisorAdapter:
+    def run(self, prompt, *, cwd, session_id=None, output_schema=None, timeout_seconds=None):
+        return AgentResult(
+            stdout="",
+            stderr="advisor command failed",
+            final_message="",
+            events_path=None,
+            exit_code=127,
+            session_id=session_id,
+            raw_artifacts={
+                "backend": "failing-advisor",
+                "cwd": cwd,
+                "output_schema": output_schema,
+                "timeout_seconds": timeout_seconds,
+            },
+        )
 
 
 class RunnerTests(TestCase):
@@ -119,6 +141,40 @@ class RunnerTests(TestCase):
             self.assertEqual(result.outcome["status"], "advisor_stop_signal")
             self.assertEqual(result.outcome["advisor_consult_count"], 1)
             self.assertEqual(result.outcome["advisor_guidance_count"], 1)
+
+    def test_failed_advisor_does_not_persist_or_apply_guidance(self):
+        def adapter_factory(name):
+            if name == "fake":
+                return FakeAdapter()
+            if name == "failing":
+                return FailingAdvisorAdapter()
+            raise AssertionError("unexpected adapter: {}".format(name))
+
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            init_workspace(root)
+            with patch("packages.harness.runner.create_adapter", side_effect=adapter_factory):
+                result = run_task(
+                    root=root,
+                    task="fake smoke task",
+                    executor_backend="fake",
+                    advisor_backend="failing",
+                    timeout_seconds=10,
+                )
+
+            self.assertEqual(result.outcome["status"], "advisor_failed")
+            self.assertEqual(result.outcome["executor_turn_count"], 1)
+            self.assertEqual(result.outcome["advisor_consult_count"], 1)
+            self.assertEqual(result.outcome["advisor_guidance_count"], 0)
+            self.assertEqual(read_jsonl(result.run_dir / "advisor_guidance.jsonl"), [])
+            self.assertFalse((root / "mailbox" / "advisor_guidance.jsonl").exists())
+
+            payload = RunDatabase.for_root(root).run_payload(result.run_id)
+            self.assertEqual(payload["run"]["status"], "advisor_failed")
+            self.assertEqual(payload["run"]["error_mode"], "advisor_failed")
+            self.assertEqual([turn["role"] for turn in payload["agent_turns"]], ["executor", "advisor"])
+            self.assertEqual(payload["agent_turns"][1]["exit_code"], 127)
+            self.assertEqual(payload["advisor_guidance"], [])
 
     def test_max_turns_reached_status(self):
         with TemporaryDirectory() as td:
