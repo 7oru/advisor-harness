@@ -14,6 +14,7 @@ from packages.harness.evaluation import run_evaluation
 from packages.harness.review import review_run
 from packages.harness.runner import run_task
 from packages.harness.ui import dashboard_url, render_dashboard, serve_dashboard
+from packages.verticals.release_readiness import run_release_readiness
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
@@ -100,6 +101,30 @@ def cmd_ui(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_release_readiness(args: argparse.Namespace) -> int:
+    root = Path(args.cwd).resolve()
+    evidence_path = Path(args.evidence).expanduser().resolve() if args.evidence else None
+    result = run_release_readiness(
+        root=root,
+        evidence_path=evidence_path,
+        use_sample=args.sample,
+        executor_backend=args.executor,
+        advisor_backend=args.advisor,
+        timeout_seconds=args.timeout,
+        max_turns=args.max_turns,
+        max_advisor_calls=args.max_advisor_calls,
+    )
+    report = result.evaluation.get("report") or {}
+    print("run_id: {}".format(result.run.run_id))
+    print("run_dir: {}".format(result.run.run_dir))
+    print("status: {}".format(result.run.outcome["status"]))
+    print("advisor_consults: {}".format(result.run.outcome["advisor_consult_count"]))
+    print("vertical_passed: {}".format(result.evaluation["passed"]))
+    print("verdict: {}".format(report.get("verdict", "unknown")))
+    print("release_readiness_evaluation: {}".format(result.run.run_dir / "release_readiness_evaluation.md"))
+    return 0 if result.run.outcome["status"] == "completed" and result.evaluation["passed"] else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="maa", description="Multi-Agent Advisor harness")
     parser.add_argument("--version", action="version", version="maa {}".format(__version__))
@@ -145,6 +170,20 @@ def build_parser() -> argparse.ArgumentParser:
     ui_parser.add_argument("--serve", action="store_true", help="Serve the rendered UI on localhost")
     ui_parser.add_argument("--port", default=8765, type=int, help="Localhost port for --serve")
     ui_parser.set_defaults(func=cmd_ui)
+
+    release_parser = subparsers.add_parser(
+        "release-readiness",
+        help="Run the release readiness vertical workflow",
+    )
+    evidence_group = release_parser.add_mutually_exclusive_group(required=True)
+    evidence_group.add_argument("--evidence", help="Markdown or text file containing release evidence")
+    evidence_group.add_argument("--sample", action="store_true", help="Use bundled sample release evidence")
+    release_parser.add_argument("--executor", default="kimi", choices=["kimi", "codex", "fake"])
+    release_parser.add_argument("--advisor", default="codex", choices=["kimi", "codex", "fake"])
+    release_parser.add_argument("--timeout", default=240, type=int, help="Per-agent timeout in seconds")
+    release_parser.add_argument("--max-turns", default=3, type=int, help="Maximum executor turns")
+    release_parser.add_argument("--max-advisor-calls", default=2, type=int, help="Maximum advisor consultations")
+    release_parser.set_defaults(func=cmd_release_readiness)
 
     return parser
 

@@ -26,7 +26,9 @@ class FakeAdapter(AgentAdapter):
     ) -> AgentResult:
         prompt_lower = prompt.lower()
         if "current consultation request:" in prompt_lower:
-            if "eval malformed guidance" in prompt_lower:
+            if "release readiness vertical workflow" in prompt_lower:
+                final = self._release_readiness_guidance()
+            elif "eval malformed guidance" in prompt_lower:
                 final = self._malformed_guidance()
             elif "eval advisor stop" in prompt_lower:
                 final = self._advisor_stop_guidance()
@@ -35,7 +37,9 @@ class FakeAdapter(AgentAdapter):
         elif "post-run review request:" in prompt_lower or "post run review request:" in prompt_lower:
             final = self._post_run_review()
         elif "advisor guidance to executor:" in prompt_lower:
-            if "eval max turns" in prompt_lower:
+            if "release readiness vertical workflow" in prompt_lower:
+                final = self._release_readiness_done()
+            elif "eval max turns" in prompt_lower:
                 final = self._executor_consult(question="Should the fake executor keep consulting?")
             else:
                 final = self._executor_done()
@@ -47,6 +51,8 @@ class FakeAdapter(AgentAdapter):
             )
         elif "eval malformed consult" in prompt_lower:
             final = self._malformed_consult()
+        elif "release readiness vertical workflow" in prompt_lower:
+            final = self._release_readiness_consult()
         else:
             final = self._executor_consult()
         return AgentResult(
@@ -153,6 +159,97 @@ class FakeAdapter(AgentAdapter):
         return "\n".join(
             [
                 "Fake executor applied advisor guidance and completed.",
+                "<EXECUTOR_DONE>",
+                json.dumps(done, indent=2, sort_keys=True),
+                "</EXECUTOR_DONE>",
+            ]
+        )
+
+    def _release_readiness_consult(self) -> str:
+        consult = {
+            "question": "Should the release readiness verdict be conditional_go or hold?",
+            "context": (
+                "The supplied evidence shows working generic harness capabilities and known gaps "
+                "around live smoke coverage and vertical documentation."
+            ),
+            "options": ["conditional_go with follow-up actions", "hold until every gap is closed"],
+            "preferred_option": "conditional_go with follow-up actions",
+            "urgency": "normal",
+        }
+        return "\n".join(
+            [
+                "Fake release readiness executor is consulting before the final verdict.",
+                "<ADVISOR_CONSULT>",
+                json.dumps(consult, indent=2, sort_keys=True),
+                "</ADVISOR_CONSULT>",
+            ]
+        )
+
+    def _release_readiness_guidance(self) -> str:
+        guidance = {
+            "guidance": (
+                "Use conditional_go if deterministic vertical acceptance passes, call out the missing "
+                "live smoke as a follow-up, and require documentation for the vertical command."
+            ),
+            "rationale": (
+                "The evidence supports a bounded release, but the live smoke and docs gaps should stay "
+                "visible in the readiness report."
+            ),
+            "stop_signal": False,
+        }
+        return "\n".join(
+            [
+                "Fake advisor returned release readiness guidance.",
+                "<ADVISOR_GUIDANCE>",
+                json.dumps(guidance, indent=2, sort_keys=True),
+                "</ADVISOR_GUIDANCE>",
+            ]
+        )
+
+    def _release_readiness_done(self) -> str:
+        report = {
+            "verdict": "conditional_go",
+            "summary": (
+                "The release can proceed if the deterministic vertical path passes and the live smoke "
+                "gap remains tracked as follow-up."
+            ),
+            "blockers": [],
+            "risks": [
+                {
+                    "id": "R1",
+                    "severity": "medium",
+                    "description": "Live Kimi/Codex smoke may not have been run for this candidate.",
+                    "mitigation": "Run the optional live smoke before broader use or document the skipped check.",
+                },
+                {
+                    "id": "R2",
+                    "severity": "low",
+                    "description": "The release readiness vertical is new.",
+                    "mitigation": "Keep deterministic fake acceptance coverage and inspect run artifacts in the UI.",
+                },
+            ],
+            "required_actions": [
+                "Run the deterministic release-readiness vertical test.",
+                "Document the CLI command and generated artifacts.",
+            ],
+            "advisor_consulted": True,
+            "confidence": 0.82,
+            "measurable_outputs": {
+                "blocker_count": 0,
+                "risk_count": 2,
+                "required_action_count": 2,
+            },
+        }
+        done = {
+            "status": "completed",
+            "summary": "Fake release readiness workflow produced a conditional_go report.",
+        }
+        return "\n".join(
+            [
+                "Fake release readiness executor produced a structured report.",
+                "<RELEASE_READINESS_REPORT>",
+                json.dumps(report, indent=2, sort_keys=True),
+                "</RELEASE_READINESS_REPORT>",
                 "<EXECUTOR_DONE>",
                 json.dumps(done, indent=2, sort_keys=True),
                 "</EXECUTOR_DONE>",
