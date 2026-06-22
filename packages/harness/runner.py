@@ -167,9 +167,6 @@ def run_task(
         if malformed_blocks:
             status = "malformed_block"
             break
-        if done_blocks:
-            executor_done = done_blocks[0]
-
         raw_consults = _parse_json_blocks(
             executor_result.final_message,
             "ADVISOR_CONSULT",
@@ -185,7 +182,8 @@ def run_task(
         if not raw_consults:
             if executor_result.exit_code != 0:
                 status = "executor_failed"
-            elif executor_done:
+            elif done_blocks:
+                executor_done = done_blocks[0]
                 status = "completed"
             else:
                 status = "executor_stopped_without_done"
