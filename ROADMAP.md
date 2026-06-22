@@ -81,6 +81,13 @@ Acceptance signal:
 
 - The vertical application demonstrates that the advisor strategy improves task quality or safety while keeping advisor calls explainable and bounded.
 
+Current scaffold support:
+
+- The first focused vertical is `release-readiness`, a release/MVP readiness review workflow with repeated evidence review, a high-value final gate, and measurable report counts.
+- Domain prompt, sample evidence, JSON schema, evaluator, and workflow wrapper live under `packages/verticals/release_readiness/`, outside the generic harness core.
+- `maa release-readiness --sample --executor fake --advisor fake` runs a deterministic vertical smoke path through the same advisor loop, persistence database, and UI timeline.
+- The vertical writes `release_readiness_evaluation.json` and `release_readiness_evaluation.md` alongside normal run artifacts, and acceptance tests cover the workflow, CLI entrypoint, and missing-report failure mode.
+
 ## Phase 4: Build the Feedback Loop for Memory Schema and Prompts
 
 Goal: let post-run review propose improvements to durable memory structure and the injected prompts used by executor and advisor.

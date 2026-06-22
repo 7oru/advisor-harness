@@ -30,6 +30,7 @@ maa run "fake smoke task" --executor fake --advisor fake --max-turns 3 --max-adv
 maa eval
 maa ui
 maa review --run <run_id> --advisor fake
+maa release-readiness --sample --executor fake --advisor fake
 ```
 
 Live local smoke:
@@ -57,6 +58,16 @@ maa ui --serve --port 8765
 ```
 
 `maa ui` renders a local HTML dashboard to `runs/ui/index.html` from the SQLite run database. The dashboard filters persisted runs by status, backend, advisor call count, task text, and error mode, then shows the selected run timeline, prompts, raw CLI outputs, consult reasons, guidance, memory proposals, and outcome.
+
+Release readiness vertical:
+
+```bash
+maa release-readiness --sample --executor fake --advisor fake
+maa release-readiness --evidence path/to/release-evidence.md \
+  --executor kimi --advisor codex --timeout 240
+```
+
+`maa release-readiness` runs a focused vertical workflow on top of the same advisor loop, persistence database, and UI timeline. The workflow assesses supplied release evidence, requires an advisor consultation before the final verdict, emits a structured `RELEASE_READINESS_REPORT`, and writes `release_readiness_evaluation.json` plus `release_readiness_evaluation.md` into the run directory.
 
 ## Advisor Protocol
 
@@ -107,6 +118,7 @@ Important run files:
 - `advisor_turn_<n>.*`: advisor CLI outputs
 - `outcome.json`: run status and counters
 - `evaluation_summary.json`: evaluation metrics and scenario results for `maa eval`
+- `release_readiness_evaluation.json`: vertical acceptance result and report metrics for `maa release-readiness`
 - `runs/ui/index.html`: generated local run timeline dashboard
 
 The `outcome.json` file includes the executor session id, executor turn count, advisor consultation count, guidance count, and completion status.
