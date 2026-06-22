@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "advisor_consulted": {
+      "type": "boolean"
+    },
+    "blockers": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "evidence": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "severity",
+          "description",
+          "evidence"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "confidence": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number"
+    },
+    "measurable_outputs": {
+      "additionalProperties": false,
+      "properties": {
+        "blocker_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "required_action_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "risk_count": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "blocker_count",
+        "risk_count",
+        "required_action_count"
+      ],
+      "type": "object"
+    },
+    "required_actions": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "risks": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "mitigation": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "severity",
+          "description",
+          "mitigation"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "summary": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "verdict": {
+      "enum": [
+        "go",
+        "conditional_go",
+        "hold"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "verdict",
+    "summary",
+    "blockers",
+    "risks",
+    "required_actions",
+    "advisor_consulted",
+    "confidence",
+    "measurable_outputs"
+  ],
+  "title": "ReleaseReadinessReport",
+  "type": "object"
+}
+

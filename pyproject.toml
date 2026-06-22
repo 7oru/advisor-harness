@@ -15,3 +15,6 @@ maa = "packages.harness.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["packages*"]
+
+[tool.setuptools.package-data]
+"packages.verticals.release_readiness" = ["prompts/*.md", "samples/*.md", "schemas/*.json"]
