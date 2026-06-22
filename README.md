@@ -41,6 +41,14 @@ maa run "For this smoke test, consult the advisor once before finalizing, then p
 maa review --run <run_id> --advisor codex --timeout 240
 ```
 
+Post-run feedback loop:
+
+```bash
+maa review --run <run_id> --advisor fake
+```
+
+`maa review` writes the freeform post-run review, a routing policy patch proposal, and structured `improvement_proposals.json` / `improvement_proposals.md` artifacts. Improvement proposals cover memory schema, executor prompt, and advisor prompt targets, validate that every proposal is advisory and requires human approval, and are never applied automatically.
+
 Evaluation harness:
 
 ```bash
@@ -111,6 +119,7 @@ Runtime state is local and gitignored:
 Important run files:
 
 - `memory/advisor_runs.db`: queryable source of truth for persisted runs, events, turns, consults, guidance, memory proposals, malformed blocks, and outcomes
+- `version_manifest.json`: prompt, memory schema, and policy file version/hash metadata captured at run start
 - `session_events.jsonl`: durable cross-session event log
 - `advisor_consults.jsonl`: executor consultation requests
 - `advisor_guidance.jsonl`: advisor guidance returned to executor
@@ -119,6 +128,7 @@ Important run files:
 - `outcome.json`: run status and counters
 - `evaluation_summary.json`: evaluation metrics and scenario results for `maa eval`
 - `release_readiness_evaluation.json`: vertical acceptance result and report metrics for `maa release-readiness`
+- `improvement_proposals.json`: validated post-run proposals for memory schema and prompt improvements
 - `runs/ui/index.html`: generated local run timeline dashboard
 
 The `outcome.json` file includes the executor session id, executor turn count, advisor consultation count, guidance count, and completion status.

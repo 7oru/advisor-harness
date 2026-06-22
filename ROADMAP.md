@@ -105,3 +105,10 @@ Key outcomes:
 Acceptance signal:
 
 - The system can produce auditable patch proposals that improve future executor/advisor behavior without letting a model directly mutate durable policy, schema, or prompts.
+
+Current scaffold support:
+
+- Every run writes `version_manifest.json` and carries the same manifest in `outcome.json`, tracking executor prompt, advisor prompt, resume prompt, memory schema, and policy file hashes.
+- `maa review` now asks post-run review for structured improvement proposals covering `memory_schema`, `executor_prompt`, and `advisor_prompt`.
+- The harness extracts and validates `IMPROVEMENT_PROPOSALS`, writes `improvement_proposals.json` and `improvement_proposals.md`, and rejects packets that omit required targets or do not require human approval.
+- Fake post-run review emits deterministic "No change recommended" proposal slots for all three targets, giving the feedback loop repeatable acceptance coverage without auto-applying changes.
