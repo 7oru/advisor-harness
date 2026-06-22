@@ -1,4 +1,8 @@
 import json
+import shutil
+import subprocess
+import sys
+import zipfile
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
@@ -149,6 +153,53 @@ class ReleaseReadinessVerticalTests(TestCase):
             self.assertIn("status: completed", output)
             self.assertIn("vertical_passed: True", output)
             self.assertIn("verdict: conditional_go", output)
+
+    def test_release_readiness_assets_are_packaged_in_wheel(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        expected_assets = {
+            "packages/verticals/release_readiness/prompts/release_readiness.md",
+            "packages/verticals/release_readiness/samples/sample_evidence.md",
+            "packages/verticals/release_readiness/schemas/release_readiness_report.schema.json",
+        }
+
+        with TemporaryDirectory() as td:
+            temp_root = Path(td)
+            repo_copy = temp_root / "repo"
+            wheelhouse = temp_root / "wheelhouse"
+            ignore = shutil.ignore_patterns(
+                ".git",
+                "__pycache__",
+                ".pytest_cache",
+                "*.egg-info",
+                "build",
+                "dist",
+            )
+            shutil.copytree(repo_root, repo_copy, ignore=ignore)
+            wheelhouse.mkdir()
+
+            subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "wheel",
+                    str(repo_copy),
+                    "--no-deps",
+                    "--no-build-isolation",
+                    "-w",
+                    str(wheelhouse),
+                ],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            wheel_path = next(wheelhouse.glob("*.whl"))
+
+            with zipfile.ZipFile(wheel_path) as wheel:
+                packaged = set(wheel.namelist())
+
+            self.assertTrue(expected_assets.issubset(packaged))
 
     def test_release_readiness_evaluator_flags_missing_report(self):
         with TemporaryDirectory() as td:
